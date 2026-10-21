@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 enum RoutineType {
   recurring, // Recorrente por dias da semana
   periodic,  // Periódico por intervalos dentro de janela

@@ -9,7 +9,6 @@ class ThemeSelectorScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activeTheme = ref.watch(themeProvider);
     final activePalette = ref.watch(themeProvider.notifier).currentPaletteData;
 
     final allThemes = [
@@ -48,11 +47,10 @@ class ThemeSelectorScreen extends ConsumerWidget {
             const SizedBox(height: 20),
 
             // Lista dos 3 Temas
-            ...allThemes.map((pal) {
-              final isSelected = pal.id == activePalette.id;
-              return ThemeCard(
+            for (final pal in allThemes)
+              ThemeCard(
                 palette: pal,
-                isSelected: isSelected,
+                isSelected: pal.id == activePalette.id,
                 onSelect: () {
                   ref.read(themeProvider.notifier).setPaletteById(pal.id);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -62,8 +60,7 @@ class ThemeSelectorScreen extends ConsumerWidget {
                     ),
                   );
                 },
-              );
-            }).toList(),
+              ),
 
             const SizedBox(height: 12),
             ElevatedButton(

@@ -22,7 +22,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   TimeOfDay _selectedTime = const TimeOfDay(hour: 7, minute: 0);
   final List<int> _selectedWeekdays = [1, 2, 3, 4, 5]; // Seg a Sex padrão
   DateTime _selectedPunctualDate = DateTime.now().add(const Duration(days: 1));
-  int _intervalMinutes = 120; // 2 horas
+  final int _intervalMinutes = 120; // 2 horas
 
   @override
   void initState() {

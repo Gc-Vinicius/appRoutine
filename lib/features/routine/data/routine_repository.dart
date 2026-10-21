@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/routine_model.dart';
 import '../../../core/services/alarm_scheduler_service.dart';
 
@@ -12,7 +9,6 @@ abstract class RoutineRepository {
 }
 
 class LocalRoutineRepository implements RoutineRepository {
-  static const String _storageKey = 'saved_routines_json_v1';
   final AlarmSchedulerService _alarmScheduler = AlarmSchedulerService();
 
   // Memória cache local para reatividade imediata

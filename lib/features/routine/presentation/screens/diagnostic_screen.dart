@@ -94,7 +94,7 @@ class DiagnosticScreen extends ConsumerWidget {
                       isGranted: perms.hasExactAlarm,
                       onRequest: () async {
                         await PermissionService().requestExactAlarmPermission();
-                        ref.refresh(permissionsProvider);
+                        ref.invalidate(permissionsProvider);
                       },
                     ),
                     _buildPermissionItem(
@@ -104,7 +104,7 @@ class DiagnosticScreen extends ConsumerWidget {
                       isGranted: perms.hasNotification,
                       onRequest: () async {
                         await PermissionService().requestNotificationPermission();
-                        ref.refresh(permissionsProvider);
+                        ref.invalidate(permissionsProvider);
                       },
                     ),
                     _buildPermissionItem(
@@ -114,7 +114,7 @@ class DiagnosticScreen extends ConsumerWidget {
                       isGranted: perms.hasBatteryOptimizationExemption,
                       onRequest: () async {
                         await PermissionService().requestBatteryOptimizationExemption();
-                        ref.refresh(permissionsProvider);
+                        ref.invalidate(permissionsProvider);
                       },
                     ),
                   ],
@@ -161,11 +161,13 @@ class DiagnosticScreen extends ConsumerWidget {
             ElevatedButton.icon(
               onPressed: () async {
                 await NotificationService().testWatchNotification();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Notificação de teste disparada! Verifique a vibração no seu pulso.'),
-                  ),
-                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Notificação de teste disparada! Verifique a vibração no seu pulso.'),
+                    ),
+                  );
+                }
               },
               icon: const Icon(Icons.vibration),
               label: const Text('Disparar Teste de Vibração no Relógio Agora'),

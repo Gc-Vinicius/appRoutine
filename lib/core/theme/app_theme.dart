@@ -13,22 +13,18 @@ class AppTheme {
             primary: palette.primary,
             secondary: palette.secondary,
             surface: palette.surface,
-            background: palette.background,
             onPrimary: isDark ? palette.textPrimary : Colors.white,
             onSecondary: palette.textPrimary,
             onSurface: palette.textPrimary,
-            onBackground: palette.textPrimary,
             outline: palette.border,
           )
         : ColorScheme.light(
             primary: palette.primary,
             secondary: palette.secondary,
             surface: palette.surface,
-            background: palette.background,
             onPrimary: Colors.white,
             onSecondary: palette.textPrimary,
             onSurface: palette.textPrimary,
-            onBackground: palette.textPrimary,
             outline: palette.border,
           );
 
@@ -57,7 +53,7 @@ class AppTheme {
       ),
 
       // Cards
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: palette.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -77,19 +73,19 @@ class AppTheme {
 
       // Switches (Ativos e Desativados)
       switchTheme: SwitchThemeData(
-        thumbColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return isDark ? palette.textPrimary : Colors.white;
           }
           return palette.textMuted;
         }),
-        trackColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return palette.primary;
           }
           return palette.surfaceVariant;
         }),
-        trackOutlineColor: MaterialStateProperty.all(palette.border),
+        trackOutlineColor: WidgetStateProperty.all(palette.border),
       ),
 
       // Inputs de Texto

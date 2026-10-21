@@ -35,7 +35,7 @@ class ThemeCard extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: palette.primary.withOpacity(0.2),
+                    color: palette.primary.withValues(alpha: 0.2),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   )

@@ -70,7 +70,7 @@ class SmartwatchPreviewCard extends ConsumerWidget {
                   border: Border.all(color: const Color(0xFF384050), width: 3),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.35),
+                      color: Colors.black.withValues(alpha: 0.35),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
