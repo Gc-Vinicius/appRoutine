@@ -1,0 +1,48 @@
+name: app_routine
+description: "Aplicativo de rotinas e hábitos com alarmes exatos e espelhamento no Haylou Solar Neo."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Gerência de Estado Reativa
+  flutter_riverpod: ^2.5.1
+
+  # Banco de Dados Local SQLite Seguro (Drift)
+  drift: ^2.18.0
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.3
+  path: ^1.9.0
+
+  # Agendamento em Segundo Plano e Despertador Preciso (Doze Mode)
+  android_alarm_manager_plus: ^3.0.4
+
+  # Notificações Locais de Alta Prioridade para Interceptação BLE
+  flutter_local_notifications: ^17.2.1
+
+  # Permissões do Android (SCHEDULE_EXACT_ALARM, POST_NOTIFICATIONS, BATERIA)
+  permission_handler: ^11.3.1
+  android_intent_plus: ^4.0.3
+  device_info_plus: ^10.1.0
+
+  # Fusos Horários e Formatação
+  timezone: ^0.9.3
+  intl: ^0.19.0
+
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  drift_dev: ^2.18.0
+  build_runner: ^2.4.9
+
+flutter:
+  uses-material-design: true
