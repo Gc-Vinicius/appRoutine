@@ -18,6 +18,23 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 14.0, top: 8.0, bottom: 8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              border: Border.all(color: palette.border, width: 1.2),
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/icon/app_logo_512.png',
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Icon(Icons.alarm, color: palette.primary),
+              ),
+            ),
+          ),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
