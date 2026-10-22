@@ -22,6 +22,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   final _bodyController = TextEditingController();
 
   late RoutineType _selectedType;
+  late RoutineCategory _selectedCategory;
   late TimeOfDay _selectedTime;
   late List<int> _selectedWeekdays;
   late DateTime _selectedPunctualDate;
@@ -38,6 +39,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _titleController.text = toEdit.title;
       _bodyController.text = toEdit.body;
       _selectedType = toEdit.type;
+      _selectedCategory = toEdit.category;
       _selectedTime = TimeOfDay(hour: toEdit.hour, minute: toEdit.minute);
       _selectedWeekdays = List<int>.from(toEdit.weekdays);
       _selectedPunctualDate = toEdit.punctualDate ?? DateTime.now();
@@ -46,6 +48,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _titleController.text = '';
       _bodyController.text = '';
       _selectedType = RoutineType.recurring;
+      _selectedCategory = RoutineCategory.general;
       _selectedTime = const TimeOfDay(hour: 7, minute: 0);
       _selectedWeekdays = [1, 2, 3, 4, 5]; // Seg a Sex padrão
       _selectedPunctualDate = DateTime.now();
@@ -160,6 +163,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       title: title,
       body: body.isEmpty ? title : body,
       type: _selectedType,
+      category: _selectedCategory,
       hour: _selectedTime.hour,
       minute: _selectedTime.minute,
       weekdays: _selectedType == RoutineType.recurring ? _selectedWeekdays : [],
@@ -167,6 +171,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       windowStartHour: _selectedType == RoutineType.periodic ? 8 : null,
       windowEndHour: _selectedType == RoutineType.periodic ? 20 : null,
       punctualDate: punctualDate,
+      skippedUntil: widget.routineToEdit?.skippedUntil,
       isActive: widget.routineToEdit?.isActive ?? true,
       createdAt: widget.routineToEdit?.createdAt ?? DateTime.now(),
     );
@@ -174,11 +179,13 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
     await ref.read(routineListProvider.notifier).addOrUpdateRoutine(newRoutine);
 
     if (mounted) {
+      final timeInfo = newRoutine.timeUntilNextFormatted;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_isEditing
-              ? 'Rotina atualizada com sucesso!'
-              : 'Alarme salvo e agendado com sucesso!'),
+              ? 'Rotina atualizada! $timeInfo.'
+              : 'Alarme salvo com sucesso! $timeInfo.'),
+          duration: const Duration(seconds: 4),
         ),
       );
       Navigator.pop(context);
@@ -237,7 +244,57 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            // SELETOR DE CATEGORIA (Tags / Ícones)
+            Text(
+              'Categoria da Rotina',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: palette.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: RoutineCategory.values.map((cat) {
+                  final isSelected = _selectedCategory == cat;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedCategory = cat),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: isSelected ? palette.primary : palette.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? palette.primary : palette.border,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(cat.emoji, style: const TextStyle(fontSize: 14)),
+                          const SizedBox(width: 6),
+                          Text(
+                            cat.label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected
+                                  ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
+                                  : palette.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 18),
 
             // INPUT 1: Título com Trava Rígida (RF02)
             Row(
@@ -452,9 +509,13 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
 
             // Botão Salvar / Atualizar
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _saveRoutine,
-              child: Text(_isEditing ? 'Atualizar Alarme de Rotina' : 'Salvar e Agendar Alarme'),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _saveRoutine,
+                child: Text(_isEditing ? 'Atualizar Alarme de Rotina' : 'Salvar e Agendar Alarme'),
+              ),
             ),
           ],
         ),

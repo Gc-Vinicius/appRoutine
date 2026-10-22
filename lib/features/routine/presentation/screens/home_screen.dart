@@ -5,15 +5,24 @@ import '../widgets/routine_card.dart';
 import '../widgets/live_clock_widget.dart';
 import 'create_routine_screen.dart';
 import 'diagnostic_screen.dart';
+import 'sleep_calculator_screen.dart';
 import 'theme_selector_screen.dart';
+import 'timer_stopwatch_screen.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int _currentNavIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final palette = ref.watch(currentPaletteProvider);
     final routines = ref.watch(filteredRoutinesProvider);
     final activeFilter = ref.watch(routineFilterProvider);
@@ -40,7 +49,9 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              'Rotinas & Hábitos',
+              _currentNavIndex == 0
+                  ? 'Rotinas & Hábitos'
+                  : (_currentNavIndex == 1 ? 'Ferramentas de Tempo' : 'Ciclos de Sono (REM)'),
               style: TextStyle(
                 color: palette.textPrimary,
                 fontSize: 18,
@@ -73,58 +84,97 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
+      body: IndexedStack(
+        index: _currentNavIndex,
         children: [
-          // Widget de Relógio Ao Vivo (Analógico + Digital) solicitado na Imagem 2
-          const LiveClockWidget(),
-
-          // Filtros Rápidos (Tabs)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Row(
-              children: [
-                _buildFilterTab(ref, palette, 'all', 'Todos', activeFilter),
-                _buildFilterTab(ref, palette, 'recurring', 'Recorrentes', activeFilter),
-                _buildFilterTab(ref, palette, 'periodic', 'Periódicos', activeFilter),
-                _buildFilterTab(ref, palette, 'punctual', 'Pontuais', activeFilter),
-              ],
-            ),
+          _buildRoutinesTab(palette, routines, activeFilter),
+          const TimerStopwatchScreen(),
+          const SleepCalculatorScreen(),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentNavIndex,
+        onTap: (index) => setState(() => _currentNavIndex = index),
+        backgroundColor: palette.surface,
+        selectedItemColor: palette.primary,
+        unselectedItemColor: palette.textMuted,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+        unselectedLabelStyle: const TextStyle(fontSize: 10.5),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.alarm),
+            label: 'Rotinas',
           ),
-
-          // Lista de Alarmes
-          Expanded(
-            child: routines.isEmpty
-                ? Center(
-                    child: Text(
-                      'Nenhum alarme encontrado nesta categoria.',
-                      style: TextStyle(color: palette.textMuted, fontSize: 13),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: routines.length,
-                    padding: const EdgeInsets.only(bottom: 80),
-                    itemBuilder: (context, index) {
-                      return RoutineCard(routine: routines[index]);
-                    },
-                  ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.hourglass_bottom),
+            label: 'Timer / Cronômetro',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.nightlight_round),
+            label: 'Ciclos de Sono',
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CreateRoutineScreen()),
-          );
-        },
-        child: const Icon(Icons.add, size: 28),
-      ),
+      floatingActionButton: _currentNavIndex == 0
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateRoutineScreen()),
+                );
+              },
+              child: const Icon(Icons.add, size: 28),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildRoutinesTab(
+    dynamic palette,
+    List<dynamic> routines,
+    String activeFilter,
+  ) {
+    return Column(
+      children: [
+        // Widget de Relógio Ao Vivo (Analógico + Digital) solicitado na Imagem 2
+        const LiveClockWidget(),
+
+        // Filtros Rápidos (Tabs)
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            children: [
+              _buildFilterTab(palette, 'all', 'Todos', activeFilter),
+              _buildFilterTab(palette, 'recurring', 'Recorrentes', activeFilter),
+              _buildFilterTab(palette, 'periodic', 'Periódicos', activeFilter),
+              _buildFilterTab(palette, 'punctual', 'Pontuais', activeFilter),
+            ],
+          ),
+        ),
+
+        // Lista de Alarmes
+        Expanded(
+          child: routines.isEmpty
+              ? Center(
+                  child: Text(
+                    'Nenhum alarme encontrado nesta categoria.',
+                    style: TextStyle(color: palette.textMuted, fontSize: 13),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: routines.length,
+                  padding: const EdgeInsets.only(bottom: 80),
+                  itemBuilder: (context, index) {
+                    return RoutineCard(routine: routines[index]);
+                  },
+                ),
+        ),
+      ],
     );
   }
 
   Widget _buildFilterTab(
-    WidgetRef ref,
     AppPaletteData palette,
     String filterKey,
     String label,

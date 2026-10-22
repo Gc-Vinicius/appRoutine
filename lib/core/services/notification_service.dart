@@ -35,8 +35,17 @@ class NotificationService {
 
     await _notificationsPlugin.initialize(
       initSettings,
-      onDidReceiveNotificationResponse: (response) {
-        // Disparo informativo sem forçar navegação pesada
+      onDidReceiveNotificationResponse: (response) async {
+        if (response.actionId == 'action_snooze_10') {
+          final id = response.id ?? 9999;
+          final title = response.payload ?? 'Lembrete em Soneca';
+          await snoozeRoutine(
+            id: id,
+            title: title,
+            body: 'Soneca ativada (+10 minutos)',
+            minutes: 10,
+          );
+        }
       },
     );
 
@@ -61,7 +70,7 @@ class NotificationService {
         ?.createNotificationChannel(androidChannel);
   }
 
-  NotificationDetails _buildNotificationDetails(String title) {
+  NotificationDetails _buildNotificationDetails(String title, {bool allowSnooze = true}) {
     return NotificationDetails(
       android: AndroidNotificationDetails(
         AppConstants.notificationChannelId,
@@ -75,7 +84,37 @@ class NotificationService {
         category: AndroidNotificationCategory.alarm,
         visibility: NotificationVisibility.public,
         fullScreenIntent: true,
+        actions: allowSnooze
+            ? <AndroidNotificationAction>[
+                const AndroidNotificationAction(
+                  'action_snooze_10',
+                  'Soneca (+10m)',
+                  showsUserInterface: false,
+                  cancelNotification: true,
+                ),
+              ]
+            : null,
       ),
+    );
+  }
+
+  /// Dispara um alarme de soneca (+X minutos)
+  Future<void> snoozeRoutine({
+    required int id,
+    required String title,
+    required String body,
+    int minutes = 10,
+  }) async {
+    await initialize();
+    final snoozeTime = tz.TZDateTime.now(tz.local).add(Duration(minutes: minutes));
+    await _notificationsPlugin.zonedSchedule(
+      id + 500000, // ID deslocado para a soneca
+      '[Soneca] $title',
+      body,
+      snoozeTime,
+      _buildNotificationDetails(title, allowSnooze: false),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 

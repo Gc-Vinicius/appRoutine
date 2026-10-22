@@ -94,4 +94,67 @@ class LocalStorageService {
       debugPrint('[LocalStorageService] Erro ao salvar tema: $e');
     }
   }
+
+  /// Gera um backup JSON completo e formatado contendo todas as rotinas e preferências
+  static Future<String> exportBackupJson() async {
+    final routines = await loadRoutines() ?? [];
+    final currentTheme = await loadSavedTheme();
+    String themeId = 'taiga_nordica';
+    if (currentTheme == AppThemePalette.carmimPergaminho) {
+      themeId = 'carmim_pergaminho';
+    } else if (currentTheme == AppThemePalette.brisaCosteira) {
+      themeId = 'brisa_costeira';
+    }
+
+    final backupMap = {
+      'app': 'appRoutine',
+      'version': '1.2.0',
+      'exportDate': DateTime.now().toIso8601String(),
+      'themeId': themeId,
+      'totalRoutines': routines.length,
+      'routines': routines.map((r) => r.toJson()).toList(),
+    };
+
+    return const JsonEncoder.withIndent('  ').convert(backupMap);
+  }
+
+  /// Importa e valida um backup JSON, restaurando as rotinas e configurações offline
+  static Future<int> importBackupJson(String jsonString) async {
+    try {
+      final decoded = jsonDecode(jsonString.trim());
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('Estrutura JSON inválida para backup.');
+      }
+
+      final routinesList = decoded['routines'];
+      if (routinesList is! List) {
+        throw const FormatException('Lista de rotinas não encontrada no backup.');
+      }
+
+      final List<RoutineModel> imported = [];
+      for (final item in routinesList) {
+        if (item is Map<String, dynamic>) {
+          imported.add(RoutineModel.fromJson(item));
+        }
+      }
+
+      await saveRoutines(imported);
+
+      if (decoded['themeId'] != null) {
+        final themeId = decoded['themeId'] as String;
+        if (themeId == 'carmim_pergaminho') {
+          await saveTheme(AppThemePalette.carmimPergaminho);
+        } else if (themeId == 'brisa_costeira') {
+          await saveTheme(AppThemePalette.brisaCosteira);
+        } else {
+          await saveTheme(AppThemePalette.taigaNordica);
+        }
+      }
+
+      return imported.length;
+    } catch (e) {
+      debugPrint('[LocalStorageService] Erro ao importar backup: $e');
+      rethrow;
+    }
+  }
 }

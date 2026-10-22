@@ -114,7 +114,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: palette.primary,
           foregroundColor: (isDark && palette.id == 'carmim_pergaminho') ? palette.textPrimary : Colors.white,
-          minimumSize: const Size.fromHeight(50),
+          minimumSize: const Size(64, 46),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

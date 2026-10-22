@@ -111,6 +111,15 @@ class RoutineCard extends ConsumerWidget {
                         value: routine.isActive,
                         onChanged: (val) {
                           ref.read(routineListProvider.notifier).toggleActive(routine.id!, val);
+                          if (val && context.mounted) {
+                            final info = routine.timeUntilNextFormatted;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Alarme "${routine.title}" ativado! $info.'),
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
                         },
                       ),
                     ],
@@ -119,7 +128,7 @@ class RoutineCard extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
 
-              // Linha 2: Horário em Destaque + Badge de Tipo (Recorrente/Pontual/Periódico) lado a lado
+              // Linha 2: Horário em Destaque + Badge de Tipo + Badge de Categoria
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -131,9 +140,9 @@ class RoutineCard extends ConsumerWidget {
                       color: routine.isActive ? palette.textPrimary : palette.textMuted,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: palette.badgeBg,
                       borderRadius: BorderRadius.circular(6),
@@ -147,6 +156,78 @@ class RoutineCard extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: palette.surfaceVariant,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: palette.border, width: 0.6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(routine.category.emoji, style: const TextStyle(fontSize: 11)),
+                        const SizedBox(width: 4),
+                        Text(
+                          routine.category.label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: palette.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+
+              // Feedback de Tempo Restante ("Toca em X horas")
+              Row(
+                children: [
+                  Icon(
+                    routine.isCurrentlySkipped ? Icons.pause_circle_outline : Icons.schedule,
+                    size: 13,
+                    color: routine.isCurrentlySkipped ? Colors.orangeAccent : palette.textMuted,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    routine.timeUntilNextFormatted,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: routine.isCurrentlySkipped ? FontWeight.bold : FontWeight.w500,
+                      color: routine.isCurrentlySkipped ? Colors.orangeAccent : palette.textMuted,
+                    ),
+                  ),
+                  if (routine.isActive) ...[
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () {
+                        ref.read(routineListProvider.notifier).toggleSkipNext(routine.id!);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: routine.isCurrentlySkipped ? Colors.orange.withValues(alpha: 0.15) : palette.surfaceVariant,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: routine.isCurrentlySkipped ? Colors.orangeAccent : palette.border,
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          routine.isCurrentlySkipped ? 'Reativar alarme' : 'Pular próximo',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: routine.isCurrentlySkipped ? Colors.orangeAccent : palette.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 10),
