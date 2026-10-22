@@ -36,6 +36,20 @@ class AppPaletteData {
   // Lista dos 5 Hexadecimais oficiais documentados em cores.md
   final List<String> swatchesHex;
 
+  /// Cor de primeiro plano com contraste garantido sobre `primary` (ex: botões CTA, chips ativos, ícones de destaque)
+  final Color? _onPrimary;
+
+  Color get onPrimary {
+    if (_onPrimary != null) return _onPrimary;
+    if (id == 'amoled_monocromatico') return const Color(0xFF000000);
+    if (id == 'carmim_pergaminho') return textPrimary;
+    if (id == 'crepusculo_rose') return const Color(0xFF2F3559);
+    if (id == 'tundra_ardosia') return const Color(0xFF12122B);
+    return ThemeData.estimateBrightnessForColor(primary) == Brightness.dark
+        ? Colors.white
+        : const Color(0xFF000000);
+  }
+
   const AppPaletteData({
     required this.id,
     required this.name,
@@ -53,7 +67,8 @@ class AppPaletteData {
     required this.badgeBg,
     required this.badgeText,
     required this.swatchesHex,
-  });
+    Color? onPrimary,
+  }) : _onPrimary = onPrimary;
 }
 
 class AppPalettes {
@@ -74,6 +89,7 @@ class AppPalettes {
     textMuted: Color(0xFFA89F82),
     badgeBg: Color(0xFF690202),
     badgeText: Color(0xFFE6DDBC),
+    onPrimary: Color(0xFFE6DDBC),
     swatchesHex: ['#262525', '#525252', '#E6DDBC', '#822626', '#690202'],
   );
 
@@ -94,6 +110,7 @@ class AppPalettes {
     textMuted: Color(0xFF7E9E9A),
     badgeBg: Color(0xFF3E5954),
     badgeText: Color(0xFFFFFFFF),
+    onPrimary: Colors.white,
     swatchesHex: ['#232226', '#253342', '#3E5954', '#5E9188', '#FFFFFF'],
   );
 
@@ -114,6 +131,7 @@ class AppPalettes {
     textMuted: Color(0xFF64748B),
     badgeBg: Color(0xFFC6D4E1),
     badgeText: Color(0xFF1E3A5F),
+    onPrimary: Colors.white,
     swatchesHex: ['#EBE7E0', '#FFFFFF', '#44749D', '#C6D4E1', '#BDB8AD'],
   );
 
@@ -131,9 +149,10 @@ class AppPalettes {
     secondary: Color(0xFFF1BBBB),
     textPrimary: Color(0xFFE6D8CB),
     textSecondary: Color(0xFFD1BEB0),
-    textMuted: Color(0xFFA89587),
+    textMuted: Color(0xFFA89F82),
     badgeBg: Color(0xFF9A5071),
     badgeText: Color(0xFFE6D8CB),
+    onPrimary: Color(0xFF2F3559),
     swatchesHex: ['#2F3559', '#9A5071', '#E394A7', '#F1BBBB', '#E6D8CB'],
   );
 
@@ -154,6 +173,7 @@ class AppPalettes {
     textMuted: Color(0xFF696868),
     badgeBg: Color(0xFF343434),
     badgeText: Color(0xFFFFFFFF),
+    onPrimary: Color(0xFF000000),
     swatchesHex: ['#000000', '#1A1A1A', '#343434', '#4F4E4E', '#696868'],
   );
 
@@ -174,6 +194,7 @@ class AppPalettes {
     textMuted: Color(0xFF8E9570),
     badgeBg: Color(0xFF3B657A),
     badgeText: Color(0xFFE9F0C9),
+    onPrimary: Colors.white,
     swatchesHex: ['#142026', '#123142', '#20130A', '#3B657A', '#E9F0C9'],
   );
 
@@ -194,6 +215,7 @@ class AppPalettes {
     textMuted: Color(0xFF5E5E5E),
     badgeBg: Color(0xFF383845),
     badgeText: Color(0xFFAAAA91),
+    onPrimary: Color(0xFF12122B),
     swatchesHex: ['#12122B', '#383845', '#5E5E5E', '#848478', '#AAAA91'],
   );
 
@@ -214,6 +236,7 @@ class AppPalettes {
     textMuted: Color(0xFFA08080),
     badgeBg: Color(0xFF661111),
     badgeText: Color(0xFFFFFFFF),
+    onPrimary: Colors.white,
     swatchesHex: ['#1A2B2B', '#332222', '#4D1A1A', '#661111', '#800909'],
   );
 
@@ -234,6 +257,7 @@ class AppPalettes {
     textMuted: Color(0xFF756C64),
     badgeBg: Color(0xFFE33C08),
     badgeText: Color(0xFFFFFFFF),
+    onPrimary: Colors.white,
     swatchesHex: ['#221D21', '#433D3D', '#B7AEA5', '#F77014', '#E33C08'],
   );
 
@@ -254,6 +278,7 @@ class AppPalettes {
     textMuted: Color(0xFF707C84),
     badgeBg: Color(0xFFBEC3BC),
     badgeText: Color(0xFF2B3338),
+    onPrimary: Colors.white,
     swatchesHex: ['#E6E8E3', '#D7DACF', '#BEC3BC', '#8F9A9C', '#65727A'],
   );
 

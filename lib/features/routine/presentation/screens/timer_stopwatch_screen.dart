@@ -659,7 +659,7 @@ class _TimerStopwatchScreenState extends ConsumerState<TimerStopwatchScreen>
           fontSize: 12,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           color: isSelected
-              ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
+              ? palette.onPrimary
               : palette.textPrimary,
         ),
       ),

@@ -439,7 +439,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
                                 fontSize: 12,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                                 color: isSelected
-                                    ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
+                                    ? palette.onPrimary
                                     : palette.textPrimary,
                               ),
                             ),
@@ -699,9 +699,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected
-                  ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
-                  : palette.textMuted,
+              color: isSelected ? palette.onPrimary : palette.textMuted,
             ),
           ),
         ),
@@ -744,9 +742,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
-                color: isSelected
-                    ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
-                    : palette.textMuted,
+                color: isSelected ? palette.onPrimary : palette.textMuted,
               ),
             ),
           ),

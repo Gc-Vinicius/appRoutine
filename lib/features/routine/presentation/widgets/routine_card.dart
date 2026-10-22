@@ -298,9 +298,7 @@ class RoutineCard extends ConsumerWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: isSelected
-                  ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
-                  : palette.textMuted,
+              color: isSelected ? palette.onPrimary : palette.textMuted,
             ),
           ),
         );

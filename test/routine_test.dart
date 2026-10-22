@@ -171,5 +171,17 @@ void main() {
       expect(notifier.state, equals(AppThemePalette.amoledMonocromatico));
       expect(notifier.currentPaletteData.id, equals('amoled_monocromatico'));
     });
+
+    test('AMOLED Monocromático and all palettes have valid onPrimary contrast', () {
+      final amoled = AppPalettes.amoledMonocromatico;
+      expect(amoled.primary, equals(const Color(0xFFFFFFFF)));
+      expect(amoled.onPrimary, equals(const Color(0xFF000000)));
+
+      // Todas as paletas devem possuir onPrimary distinto de primary
+      for (final p in AppPalettes.allPalettes) {
+        expect(p.primary, isNot(equals(p.onPrimary)),
+            reason: 'Paleta ${p.id} não pode ter primary e onPrimary com mesma cor');
+      }
+    });
   });
 }

@@ -237,9 +237,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           style: TextStyle(
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected
-                ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
-                : palette.textMuted,
+            color: isSelected ? palette.onPrimary : palette.textMuted,
           ),
         ),
       ),

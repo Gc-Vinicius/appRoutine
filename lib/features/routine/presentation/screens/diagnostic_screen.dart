@@ -46,7 +46,7 @@ class DiagnosticScreen extends ConsumerWidget {
                     ),
                     child: Icon(
                       Icons.check,
-                      color: palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white,
+                      color: palette.onPrimary,
                       size: 26,
                     ),
                   ),
