@@ -23,8 +23,14 @@ class LocalRoutineRepository implements RoutineRepository {
     final persisted = await LocalStorageService.loadRoutines();
     if (persisted != null) {
       _cachedRoutines = List.from(persisted);
+      // Remove resquícios dos lembretes padrão antigos
+      _cachedRoutines.removeWhere((r) =>
+          (r.id == 1 && r.title == 'Tomar Creatina & Água') ||
+          (r.id == 2 && r.title == 'Beber Água (Meta 2.5L)') ||
+          (r.id == 3 && r.title == 'Consulta Odontológica'));
+      await LocalStorageService.saveRoutines(_cachedRoutines);
     } else {
-      _loadInitialRoutines();
+      _cachedRoutines = [];
       await LocalStorageService.saveRoutines(_cachedRoutines);
     }
     _isInitialized = true;
@@ -35,47 +41,6 @@ class LocalRoutineRepository implements RoutineRepository {
         _scheduleRoutineAlarm(routine);
       }
     }
-  }
-
-  void _loadInitialRoutines() {
-    // Rotinas padrão demonstrativas baseadas nos protótipos
-    _cachedRoutines = [
-      RoutineModel(
-        id: 1,
-        title: 'Tomar Creatina & Água',
-        body: 'Tomar 5g creatina + 500ml água',
-        type: RoutineType.recurring,
-        hour: 7,
-        minute: 0,
-        weekdays: [1, 2, 3, 4, 5], // Seg a Sex
-        isActive: true,
-        createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      ),
-      RoutineModel(
-        id: 2,
-        title: 'Beber Água (Meta 2.5L)',
-        body: "Hora do copo d'água! 300ml",
-        type: RoutineType.periodic,
-        hour: 8,
-        minute: 0,
-        intervalMinutes: 120, // A cada 2 horas
-        windowStartHour: 8,
-        windowEndHour: 20,
-        isActive: true,
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-      RoutineModel(
-        id: 3,
-        title: 'Consulta Odontológica',
-        body: 'Consulta com Dr. Eduardo no Centro',
-        type: RoutineType.punctual,
-        hour: 14,
-        minute: 30,
-        punctualDate: DateTime.now().add(const Duration(days: 7)),
-        isActive: false,
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-    ];
   }
 
   @override
@@ -177,6 +142,10 @@ class LocalRoutineRepository implements RoutineRepository {
     final persisted = await LocalStorageService.loadRoutines();
     if (persisted != null) {
       _cachedRoutines = List.from(persisted);
+      _cachedRoutines.removeWhere((r) =>
+          (r.id == 1 && r.title == 'Tomar Creatina & Água') ||
+          (r.id == 2 && r.title == 'Beber Água (Meta 2.5L)') ||
+          (r.id == 3 && r.title == 'Consulta Odontológica'));
       // Re-agenda alarmes para todas as rotinas ativas
       for (final routine in _cachedRoutines) {
         if (routine.isActive && !routine.isCurrentlySkipped) {

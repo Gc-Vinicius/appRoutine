@@ -17,20 +17,11 @@ class ThemeNotifier extends StateNotifier<AppThemePalette> {
   }
 
   Future<void> setPaletteById(String id) async {
-    AppThemePalette? target;
-    switch (id) {
-      case 'carmim_pergaminho':
-        target = AppThemePalette.carmimPergaminho;
-        break;
-      case 'taiga_nordica':
-        target = AppThemePalette.taigaNordica;
-        break;
-      case 'brisa_costeira':
-        target = AppThemePalette.brisaCosteira;
-        break;
-    }
-    if (target != null) {
-      await setPalette(target);
+    for (final palette in AppThemePalette.values) {
+      if (AppPalettes.getPalette(palette).id == id) {
+        await setPalette(palette);
+        return;
+      }
     }
   }
 

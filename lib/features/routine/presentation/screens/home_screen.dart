@@ -55,73 +55,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final activeFilter = ref.watch(routineFilterProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: palette.surface,
-                border: Border.all(color: palette.border, width: 1.2),
-              ),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/icon/app_logo_512.png',
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Icon(Icons.alarm, size: 18, color: palette.primary),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              _currentNavIndex == 0
-                  ? 'Rotinas & Hábitos'
-                  : (_currentNavIndex == 1 ? 'Ferramentas de Tempo' : 'Ciclos de Sono (REM)'),
-              style: TextStyle(
-                color: palette.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.palette_outlined, color: palette.primary),
-            tooltip: 'Temas & Aparência',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ThemeSelectorScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.settings_outlined, color: palette.primary),
-            tooltip: 'Configurações',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DiagnosticScreen()),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
       body: IndexedStack(
         index: _currentNavIndex,
         children: [
           _buildRoutinesTab(palette, routines, activeFilter),
           const TimerStopwatchScreen(),
           const SleepCalculatorScreen(),
+          const ThemeSelectorScreen(isEmbedded: true),
+          const DiagnosticScreen(isEmbedded: true),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentNavIndex,
         onTap: (index) => setState(() => _currentNavIndex = index),
+        type: BottomNavigationBarType.fixed,
         backgroundColor: palette.surface,
         selectedItemColor: palette.primary,
         unselectedItemColor: palette.textMuted,
@@ -134,11 +81,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.hourglass_bottom),
-            label: 'Timer / Cronômetro',
+            label: 'Tempo',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.nightlight_round),
-            label: 'Ciclos de Sono',
+            label: 'Sono',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.palette_outlined),
+            label: 'Temas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: 'Ajustes',
           ),
         ],
       ),
@@ -165,96 +120,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final needsAttention = permAsync.value != null &&
         (!permAsync.value!.hasNotification || !permAsync.value!.hasExactAlarm);
 
-    return Column(
-      children: [
-        if (needsAttention)
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.alarm_off, color: Colors.amber, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Permissões de Alarme Necessárias',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: palette.textPrimary,
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          if (needsAttention)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.alarm_off, color: Colors.amber, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Permissões de Alarme Necessárias',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: palette.textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Ative para garantir que os alarmes toquem no horário exato.',
-                        style: TextStyle(fontSize: 10.5, color: palette.textMuted),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const DiagnosticScreen()),
-                    ).then((_) => ref.invalidate(permissionsProvider));
-                  },
-                  child: Text(
-                    'Ativar',
-                    style: TextStyle(
-                      color: palette.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                        const SizedBox(height: 2),
+                        Text(
+                          'Ative para garantir que os alarmes toquem no horário exato.',
+                          style: TextStyle(fontSize: 10.5, color: palette.textMuted),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() => _currentNavIndex = 4);
+                    },
+                    child: Text(
+                      'Ativar',
+                      style: TextStyle(
+                        color: palette.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Widget de Relógio Ao Vivo (Analógico + Digital)
+          const LiveClockWidget(),
+
+          // Filtros Rápidos (Tabs)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Row(
+              children: [
+                _buildFilterTab(palette, 'all', 'Todos', activeFilter),
+                _buildFilterTab(palette, 'recurring', 'Recorrentes', activeFilter),
+                _buildFilterTab(palette, 'periodic', 'Periódicos', activeFilter),
+                _buildFilterTab(palette, 'punctual', 'Pontuais', activeFilter),
               ],
             ),
           ),
 
-        // Widget de Relógio Ao Vivo (Analógico + Digital)
-        const LiveClockWidget(),
-
-        // Filtros Rápidos (Tabs)
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: Row(
-            children: [
-              _buildFilterTab(palette, 'all', 'Todos', activeFilter),
-              _buildFilterTab(palette, 'recurring', 'Recorrentes', activeFilter),
-              _buildFilterTab(palette, 'periodic', 'Periódicos', activeFilter),
-              _buildFilterTab(palette, 'punctual', 'Pontuais', activeFilter),
-            ],
-          ),
-        ),
-
-        // Lista de Alarmes
-        Expanded(
-          child: routines.isEmpty
-              ? Center(
-                  child: Text(
-                    'Nenhum alarme encontrado nesta categoria.',
-                    style: TextStyle(color: palette.textMuted, fontSize: 13),
+          // Lista de Alarmes
+          Expanded(
+            child: routines.isEmpty
+                ? Center(
+                    child: Text(
+                      'Nenhum alarme encontrado nesta categoria.',
+                      style: TextStyle(color: palette.textMuted, fontSize: 13),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: routines.length,
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemBuilder: (context, index) {
+                      return RoutineCard(routine: routines[index]);
+                    },
                   ),
-                )
-              : ListView.builder(
-                  itemCount: routines.length,
-                  padding: const EdgeInsets.only(bottom: 80),
-                  itemBuilder: (context, index) {
-                    return RoutineCard(routine: routines[index]);
-                  },
-                ),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 

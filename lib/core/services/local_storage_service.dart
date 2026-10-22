@@ -3,12 +3,16 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import '../theme/app_colors.dart';
+import '../../features/routine/domain/category_item.dart';
 import '../../features/routine/domain/routine_model.dart';
+import '../../features/routine/domain/timer_preset_item.dart';
 
 /// Serviço 100% offline para persistência atômica de dados locais
 class LocalStorageService {
   static const String _routinesFileName = 'routines.json';
   static const String _themeFileName = 'theme_preference.json';
+  static const String _categoriesFileName = 'custom_categories.json';
+  static const String _timerPresetsFileName = 'timer_presets.json';
 
   static Future<File> _getFile(String fileName) async {
     final dir = await getApplicationDocumentsDirectory();
@@ -47,6 +51,78 @@ class LocalStorageService {
     }
   }
 
+  /// Carrega as categorias (padrões + customizadas pelo usuário)
+  static Future<List<CategoryItem>> loadCategories() async {
+    try {
+      final file = await _getFile(_categoriesFileName);
+      if (!await file.exists()) {
+        return CategoryItem.defaultCategories;
+      }
+      final jsonString = await file.readAsString();
+      if (jsonString.trim().isEmpty) {
+        return CategoryItem.defaultCategories;
+      }
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      final loaded = jsonList
+          .map((item) => CategoryItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+      if (loaded.isEmpty) {
+        return CategoryItem.defaultCategories;
+      }
+      return loaded;
+    } catch (e) {
+      debugPrint('[LocalStorageService] Erro ao ler categorias: $e');
+      return CategoryItem.defaultCategories;
+    }
+  }
+
+  /// Salva as categorias no disco
+  static Future<void> saveCategories(List<CategoryItem> categories) async {
+    try {
+      final file = await _getFile(_categoriesFileName);
+      final jsonList = categories.map((c) => c.toJson()).toList();
+      await file.writeAsString(jsonEncode(jsonList), flush: true);
+    } catch (e) {
+      debugPrint('[LocalStorageService] Erro ao salvar categorias: $e');
+    }
+  }
+
+  /// Carrega os presets de temporizador configurados
+  static Future<List<TimerPresetItem>> loadTimerPresets() async {
+    try {
+      final file = await _getFile(_timerPresetsFileName);
+      if (!await file.exists()) {
+        return TimerPresetItem.defaultPresets;
+      }
+      final jsonString = await file.readAsString();
+      if (jsonString.trim().isEmpty) {
+        return TimerPresetItem.defaultPresets;
+      }
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      final loaded = jsonList
+          .map((item) => TimerPresetItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+      if (loaded.isEmpty) {
+        return TimerPresetItem.defaultPresets;
+      }
+      return loaded;
+    } catch (e) {
+      debugPrint('[LocalStorageService] Erro ao ler presets de timer: $e');
+      return TimerPresetItem.defaultPresets;
+    }
+  }
+
+  /// Salva os presets de temporizador
+  static Future<void> saveTimerPresets(List<TimerPresetItem> presets) async {
+    try {
+      final file = await _getFile(_timerPresetsFileName);
+      final jsonList = presets.map((p) => p.toJson()).toList();
+      await file.writeAsString(jsonEncode(jsonList), flush: true);
+    } catch (e) {
+      debugPrint('[LocalStorageService] Erro ao salvar presets de timer: $e');
+    }
+  }
+
   /// Carrega o tema selecionado pelo usuário
   static Future<AppThemePalette> loadSavedTheme() async {
     try {
@@ -61,9 +137,24 @@ class LocalStorageService {
       switch (themeId) {
         case 'carmim_pergaminho':
           return AppThemePalette.carmimPergaminho;
+        case 'taiga_nordica':
+          return AppThemePalette.taigaNordica;
         case 'brisa_costeira':
           return AppThemePalette.brisaCosteira;
-        case 'taiga_nordica':
+        case 'crepusculo_rose':
+          return AppThemePalette.crepusculoRose;
+        case 'amoled_monocromatico':
+          return AppThemePalette.amoledMonocromatico;
+        case 'abismo_botanico':
+          return AppThemePalette.abismoBotanico;
+        case 'tundra_ardosia':
+          return AppThemePalette.tundraArdosia;
+        case 'brasa_ebano':
+          return AppThemePalette.brasaEbano;
+        case 'lava_grafite':
+          return AppThemePalette.lavaGrafite;
+        case 'nevoa_glacial':
+          return AppThemePalette.nevoaGlacial;
         default:
           return AppThemePalette.taigaNordica;
       }
@@ -77,18 +168,7 @@ class LocalStorageService {
   static Future<void> saveTheme(AppThemePalette palette) async {
     try {
       final file = await _getFile(_themeFileName);
-      String themeId;
-      switch (palette) {
-        case AppThemePalette.carmimPergaminho:
-          themeId = 'carmim_pergaminho';
-          break;
-        case AppThemePalette.taigaNordica:
-          themeId = 'taiga_nordica';
-          break;
-        case AppThemePalette.brisaCosteira:
-          themeId = 'brisa_costeira';
-          break;
-      }
+      final themeId = AppPalettes.getPalette(palette).id;
       await file.writeAsString(jsonEncode({'themeId': themeId}), flush: true);
     } catch (e) {
       debugPrint('[LocalStorageService] Erro ao salvar tema: $e');
@@ -99,20 +179,19 @@ class LocalStorageService {
   static Future<String> exportBackupJson() async {
     final routines = await loadRoutines() ?? [];
     final currentTheme = await loadSavedTheme();
-    String themeId = 'taiga_nordica';
-    if (currentTheme == AppThemePalette.carmimPergaminho) {
-      themeId = 'carmim_pergaminho';
-    } else if (currentTheme == AppThemePalette.brisaCosteira) {
-      themeId = 'brisa_costeira';
-    }
+    final themeId = AppPalettes.getPalette(currentTheme).id;
+    final categories = await loadCategories();
+    final presets = await loadTimerPresets();
 
     final backupMap = {
       'app': 'appRoutine',
-      'version': '1.2.0',
+      'version': '1.2.1',
       'exportDate': DateTime.now().toIso8601String(),
       'themeId': themeId,
       'totalRoutines': routines.length,
       'routines': routines.map((r) => r.toJson()).toList(),
+      'customCategories': categories.map((c) => c.toJson()).toList(),
+      'timerPresets': presets.map((p) => p.toJson()).toList(),
     };
 
     return const JsonEncoder.withIndent('  ').convert(backupMap);
@@ -142,12 +221,34 @@ class LocalStorageService {
 
       if (decoded['themeId'] != null) {
         final themeId = decoded['themeId'] as String;
-        if (themeId == 'carmim_pergaminho') {
-          await saveTheme(AppThemePalette.carmimPergaminho);
-        } else if (themeId == 'brisa_costeira') {
-          await saveTheme(AppThemePalette.brisaCosteira);
-        } else {
-          await saveTheme(AppThemePalette.taigaNordica);
+        final matchedPalette = AppThemePalette.values.firstWhere(
+          (p) => AppPalettes.getPalette(p).id == themeId,
+          orElse: () => AppThemePalette.taigaNordica,
+        );
+        await saveTheme(matchedPalette);
+      }
+
+      if (decoded['customCategories'] is List) {
+        final List<CategoryItem> cats = [];
+        for (final item in decoded['customCategories']) {
+          if (item is Map<String, dynamic>) {
+            cats.add(CategoryItem.fromJson(item));
+          }
+        }
+        if (cats.isNotEmpty) {
+          await saveCategories(cats);
+        }
+      }
+
+      if (decoded['timerPresets'] is List) {
+        final List<TimerPresetItem> pres = [];
+        for (final item in decoded['timerPresets']) {
+          if (item is Map<String, dynamic>) {
+            pres.add(TimerPresetItem.fromJson(item));
+          }
+        }
+        if (pres.isNotEmpty) {
+          await saveTimerPresets(pres);
         }
       }
 

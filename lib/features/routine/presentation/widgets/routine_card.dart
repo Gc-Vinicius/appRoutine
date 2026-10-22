@@ -167,10 +167,10 @@ class RoutineCard extends ConsumerWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(routine.category.emoji, style: const TextStyle(fontSize: 11)),
+                        Text(routine.displayCategoryEmoji, style: const TextStyle(fontSize: 11)),
                         const SizedBox(width: 4),
                         Text(
-                          routine.category.label,
+                          routine.displayCategoryName,
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,

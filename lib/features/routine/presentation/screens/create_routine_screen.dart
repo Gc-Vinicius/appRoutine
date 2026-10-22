@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/category_item.dart';
 import '../../domain/routine_model.dart';
 import '../providers/routine_provider.dart';
 import '../widgets/smartwatch_preview_card.dart';
 import '../widgets/time_wheel_picker_dialog.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
 
 class CreateRoutineScreen extends ConsumerStatefulWidget {
@@ -23,6 +25,8 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
 
   late RoutineType _selectedType;
   late RoutineCategory _selectedCategory;
+  String? _customCategoryName;
+  String? _customCategoryEmoji;
   late TimeOfDay _selectedTime;
   late List<int> _selectedWeekdays;
   late DateTime _selectedPunctualDate;
@@ -40,6 +44,8 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _bodyController.text = toEdit.body;
       _selectedType = toEdit.type;
       _selectedCategory = toEdit.category;
+      _customCategoryName = toEdit.customCategoryName;
+      _customCategoryEmoji = toEdit.customCategoryEmoji;
       _selectedTime = TimeOfDay(hour: toEdit.hour, minute: toEdit.minute);
       _selectedWeekdays = List<int>.from(toEdit.weekdays);
       _selectedPunctualDate = toEdit.punctualDate ?? DateTime.now();
@@ -49,6 +55,8 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _bodyController.text = '';
       _selectedType = RoutineType.recurring;
       _selectedCategory = RoutineCategory.general;
+      _customCategoryName = null;
+      _customCategoryEmoji = null;
       _selectedTime = const TimeOfDay(hour: 7, minute: 0);
       _selectedWeekdays = [1, 2, 3, 4, 5]; // Seg a Sex padrão
       _selectedPunctualDate = DateTime.now();
@@ -123,6 +131,108 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
     }
   }
 
+  void _showCreateCategoryDialog(BuildContext context, AppPaletteData palette) {
+    final nameController = TextEditingController();
+    String selectedEmoji = '⭐';
+    final popularEmojis = [
+      '⭐', '🏃', '🏋️', '🚴', '🧘', '📚', '💼', '💻', '🎯', '🎨',
+      '🎵', '🍳', '🍎', '☕', '💊', '💧', '🧹', '🛒', '🐶', '🚗',
+      '💡', '🔔', '🛌', '⚽', '🌿', '✈️', '🎮', '👶', '🧴', '❤️'
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              backgroundColor: palette.surface,
+              title: Text(
+                'Nova Categoria',
+                style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Nome da categoria:',
+                      style: TextStyle(fontSize: 12, color: palette.textMuted),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: nameController,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Ex: Treino Noturno, Estudos...',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Escolha um Emoji ($selectedEmoji):',
+                      style: TextStyle(fontSize: 12, color: palette.textMuted),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: popularEmojis.map((emoji) {
+                        final isEmojiSelected = selectedEmoji == emoji;
+                        return GestureDetector(
+                          onTap: () => setDialogState(() => selectedEmoji = emoji),
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: isEmojiSelected
+                                  ? palette.primary.withValues(alpha: 0.25)
+                                  : palette.surfaceVariant,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isEmojiSelected ? palette.primary : palette.border,
+                                width: isEmojiSelected ? 2 : 1,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(emoji, style: const TextStyle(fontSize: 18)),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('Cancelar', style: TextStyle(color: palette.textMuted)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final nav = Navigator.of(ctx);
+                    final name = nameController.text.trim();
+                    if (name.isEmpty) return;
+                    await ref.read(categoryListProvider.notifier).addCustomCategory(name, selectedEmoji);
+                    if (mounted) {
+                      setState(() {
+                        _selectedCategory = RoutineCategory.general;
+                        _customCategoryName = name;
+                        _customCategoryEmoji = selectedEmoji;
+                      });
+                      nav.pop();
+                    }
+                  },
+                  child: const Text('Criar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _saveRoutine() async {
     final title = _titleController.text.trim();
     final body = _bodyController.text.trim();
@@ -164,6 +274,8 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       body: body.isEmpty ? title : body,
       type: _selectedType,
       category: _selectedCategory,
+      customCategoryName: _customCategoryName,
+      customCategoryEmoji: _customCategoryEmoji,
       hour: _selectedTime.hour,
       minute: _selectedTime.minute,
       weekdays: _selectedType == RoutineType.recurring ? _selectedWeekdays : [],
@@ -196,6 +308,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   Widget build(BuildContext context) {
     // Reatividade imediata de tema
     final palette = ref.watch(currentPaletteProvider);
+    final List<CategoryItem> categories = ref.watch(categoryListProvider);
     final timeStr =
         '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
 
@@ -247,51 +360,95 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
             const SizedBox(height: 16),
 
             // SELETOR DE CATEGORIA (Tags / Ícones)
-            Text(
-              'Categoria da Rotina',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: palette.textPrimary,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Categoria da Rotina',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: palette.textPrimary,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _showCreateCategoryDialog(context, palette),
+                  icon: Icon(Icons.add, size: 16, color: palette.primary),
+                  label: Text(
+                    'Nova Categoria',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: palette.primary,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: RoutineCategory.values.map((cat) {
-                  final isSelected = _selectedCategory == cat;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedCategory = cat),
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: isSelected ? palette.primary : palette.surface,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isSelected ? palette.primary : palette.border,
+                children: [
+                  ...categories.map((cat) {
+                    final bool isSelected;
+                    if (_customCategoryName != null) {
+                      isSelected = !cat.isDefault && cat.name == _customCategoryName;
+                    } else {
+                      isSelected = cat.isDefault && cat.id == _selectedCategory.name;
+                    }
+
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (cat.isDefault) {
+                            _selectedCategory = RoutineCategory.values.firstWhere(
+                              (c) => c.name == cat.id,
+                              orElse: () => RoutineCategory.general,
+                            );
+                            _customCategoryName = null;
+                            _customCategoryEmoji = null;
+                          } else {
+                            _selectedCategory = RoutineCategory.general;
+                            _customCategoryName = cat.name;
+                            _customCategoryEmoji = cat.emoji;
+                          }
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: isSelected ? palette.primary : palette.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected ? palette.primary : palette.border,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(cat.emoji, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 6),
+                            Text(
+                              cat.name,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                color: isSelected
+                                    ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
+                                    : palette.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Text(cat.emoji, style: const TextStyle(fontSize: 14)),
-                          const SizedBox(width: 6),
-                          Text(
-                            cat.label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                              color: isSelected
-                                  ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
-                                  : palette.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }),
+                ],
               ),
             ),
             const SizedBox(height: 18),
@@ -390,11 +547,13 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
             ),
             const SizedBox(height: 20),
 
-            // LIVE SMARTWATCH MIRROR PREVIEW
-            SmartwatchPreviewCard(
-              title: _titleController.text,
-              body: _bodyController.text,
-              time: timeStr,
+            // LIVE SMARTWATCH MIRROR PREVIEW (Centralizado)
+            Center(
+              child: SmartwatchPreviewCard(
+                title: _titleController.text,
+                body: _bodyController.text,
+                time: timeStr,
+              ),
             ),
             const SizedBox(height: 20),
 
