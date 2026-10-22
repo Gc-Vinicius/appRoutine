@@ -128,7 +128,7 @@ class LocalStorageService {
     try {
       final file = await _getFile(_themeFileName);
       if (!await file.exists()) {
-        return AppThemePalette.taigaNordica;
+        return AppThemePalette.amoledMonocromatico;
       }
       final jsonString = await file.readAsString();
       final Map<String, dynamic> data = jsonDecode(jsonString);
@@ -156,11 +156,11 @@ class LocalStorageService {
         case 'nevoa_glacial':
           return AppThemePalette.nevoaGlacial;
         default:
-          return AppThemePalette.taigaNordica;
+          return AppThemePalette.amoledMonocromatico;
       }
     } catch (e) {
       debugPrint('[LocalStorageService] Erro ao carregar tema: $e');
-      return AppThemePalette.taigaNordica;
+      return AppThemePalette.amoledMonocromatico;
     }
   }
 
@@ -223,7 +223,7 @@ class LocalStorageService {
         final themeId = decoded['themeId'] as String;
         final matchedPalette = AppThemePalette.values.firstWhere(
           (p) => AppPalettes.getPalette(p).id == themeId,
-          orElse: () => AppThemePalette.taigaNordica,
+          orElse: () => AppThemePalette.amoledMonocromatico,
         );
         await saveTheme(matchedPalette);
       }

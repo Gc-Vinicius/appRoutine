@@ -173,7 +173,7 @@ void main() {
     });
 
     test('AMOLED Monocromático and all palettes have valid onPrimary contrast', () {
-      final amoled = AppPalettes.amoledMonocromatico;
+      const amoled = AppPalettes.amoledMonocromatico;
       expect(amoled.primary, equals(const Color(0xFFFFFFFF)));
       expect(amoled.onPrimary, equals(const Color(0xFF000000)));
 

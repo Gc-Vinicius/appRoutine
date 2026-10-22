@@ -4,7 +4,7 @@ import '../services/local_storage_service.dart';
 
 /// Provedor para injetar o tema inicial carregado do disco
 final initialThemePaletteProvider = Provider<AppThemePalette>((ref) {
-  return AppThemePalette.taigaNordica;
+  return AppThemePalette.amoledMonocromatico;
 });
 
 /// Notifier para seleção e alternância dinâmica de temas com persistência local (RF07)
