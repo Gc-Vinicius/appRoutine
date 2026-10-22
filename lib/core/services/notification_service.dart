@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../constants/app_constants.dart';
@@ -23,15 +24,13 @@ class NotificationService {
 
     tz.initializeTimeZones();
     try {
-      final now = DateTime.now();
-      final locationName = now.timeZoneName;
+      final info = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(info.identifier));
+    } catch (e) {
+      debugPrint('[NotificationService] Falha ao obter fuso horário real: $e');
       try {
-        tz.setLocalLocation(tz.getLocation(locationName));
-      } catch (_) {
         tz.setLocalLocation(tz.getLocation('America/Sao_Paulo'));
-      }
-    } catch (_) {
-      tz.setLocalLocation(tz.getLocation('America/Sao_Paulo'));
+      } catch (_) {}
     }
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -123,7 +122,7 @@ class NotificationService {
         ticker: title,
         category: AndroidNotificationCategory.alarm,
         visibility: NotificationVisibility.public,
-        fullScreenIntent: true,
+        // fullScreenIntent omitido intencionalmente para evitar SecurityException no Android 14+
         actions: allowSnooze
             ? <AndroidNotificationAction>[
                 const AndroidNotificationAction(
@@ -184,6 +183,7 @@ class NotificationService {
     await initialize();
 
     final now = DateTime.now();
+    final tzNow = tz.TZDateTime.now(tz.local);
     final details = _buildNotificationDetails(routine.title);
 
     final canExact = await canScheduleExact();
@@ -200,7 +200,14 @@ class NotificationService {
         target = DateTime(target.year, target.month, target.day, routine.hour, routine.minute);
 
         if (target.isAfter(now)) {
-          final tzTarget = tz.TZDateTime.from(target, tz.local);
+          final tzTarget = tz.TZDateTime(
+            tz.local,
+            target.year,
+            target.month,
+            target.day,
+            routine.hour,
+            routine.minute,
+          );
           await _notificationsPlugin.zonedSchedule(
             routine.id!,
             routine.title,
@@ -216,8 +223,7 @@ class NotificationService {
 
         for (final weekday in routine.weekdays) {
           final subId = (routine.id! * 10) + weekday;
-          final target = _nextInstanceOfDay(weekday, routine.hour, routine.minute);
-          final tzTarget = tz.TZDateTime.from(target, tz.local);
+          final tzTarget = _nextInstanceOfDay(weekday, routine.hour, routine.minute);
 
           await _notificationsPlugin.zonedSchedule(
             subId,
@@ -241,17 +247,23 @@ class NotificationService {
           final subId = (routine.id! * 100) + slot;
           slot++;
 
-          DateTime target = DateTime(now.year, now.month, now.day, h, routine.minute);
-          if (target.isBefore(now)) {
+          tz.TZDateTime target = tz.TZDateTime(
+            tz.local,
+            tzNow.year,
+            tzNow.month,
+            tzNow.day,
+            h,
+            routine.minute,
+          );
+          if (target.isBefore(tzNow)) {
             target = target.add(const Duration(days: 1));
           }
 
-          final tzTarget = tz.TZDateTime.from(target, tz.local);
           await _notificationsPlugin.zonedSchedule(
             subId,
             routine.title,
             routine.body,
-            tzTarget,
+            target,
             details,
             androidScheduleMode: scheduleMode,
             uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
@@ -260,7 +272,7 @@ class NotificationService {
         }
       }
     } catch (e) {
-      debugPrint('[NotificationService] Falha no agendamento: $e. Tentando fallback...');
+      debugPrint('[NotificationService] Falha no agendamento: $e. Tentando fallback inexato...');
       if (canExact) {
         try {
           if (routine.type == RoutineType.punctual) {
@@ -270,7 +282,7 @@ class NotificationService {
                 routine.id!,
                 routine.title,
                 routine.body,
-                tz.TZDateTime.from(target, tz.local),
+                tz.TZDateTime(tz.local, target.year, target.month, target.day, routine.hour, routine.minute),
                 details,
                 androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
                 uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
@@ -279,12 +291,12 @@ class NotificationService {
           } else if (routine.type == RoutineType.recurring) {
             for (final weekday in routine.weekdays) {
               final subId = (routine.id! * 10) + weekday;
-              final target = _nextInstanceOfDay(weekday, routine.hour, routine.minute);
+              final tzTarget = _nextInstanceOfDay(weekday, routine.hour, routine.minute);
               await _notificationsPlugin.zonedSchedule(
                 subId,
                 routine.title,
                 routine.body,
-                tz.TZDateTime.from(target, tz.local),
+                tzTarget,
                 details,
                 androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
                 uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
@@ -297,9 +309,16 @@ class NotificationService {
     }
   }
 
-  DateTime _nextInstanceOfDay(int targetWeekday, int hour, int minute) {
-    final now = DateTime.now();
-    DateTime scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);
+  tz.TZDateTime _nextInstanceOfDay(int targetWeekday, int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
 
     while (scheduledDate.weekday != targetWeekday || scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
@@ -346,6 +365,12 @@ class NotificationService {
       title: 'Teste: Haylou Solar Neo',
       body: 'Seu relógio está conectado e pronto para vibrar nos alarmes!',
     );
+  }
+
+  /// Retorna lista de agendamentos pendentes ativos no sistema operacional
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async {
+    await initialize();
+    return await _notificationsPlugin.pendingNotificationRequests();
   }
 
   Future<void> cancelNotification(int id) async {

@@ -28,6 +28,13 @@ class LocalRoutineRepository implements RoutineRepository {
       await LocalStorageService.saveRoutines(_cachedRoutines);
     }
     _isInitialized = true;
+
+    // Garante que todas as rotinas ativas estejam agendadas no sistema operacional
+    for (final routine in _cachedRoutines) {
+      if (routine.isActive && !routine.isCurrentlySkipped) {
+        _scheduleRoutineAlarm(routine);
+      }
+    }
   }
 
   void _loadInitialRoutines() {

@@ -187,6 +187,49 @@ class DiagnosticScreen extends ConsumerWidget {
                 label: const Text('Testar Alarme Agendado (em 10 segundos)'),
               ),
             ),
+            const SizedBox(height: 10),
+
+            // Botão Consultar Fila de Alarmes no Android
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: () async {
+                  final list = await NotificationService().getPendingNotifications();
+                  if (context.mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text('Fila de Alarmes no Android (${list.length})'),
+                        content: SizedBox(
+                          width: double.maxFinite,
+                          child: list.isEmpty
+                              ? const Text('Nenhum alarme pendente agendado no sistema operacional no momento.')
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: list.length,
+                                  itemBuilder: (_, i) => ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    dense: true,
+                                    leading: const Icon(Icons.alarm, size: 20),
+                                    title: Text(list[i].title ?? 'Sem título', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    subtitle: Text(list[i].body ?? '', style: const TextStyle(fontSize: 11)),
+                                  ),
+                                ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Fechar'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.list_alt_rounded, size: 18),
+                label: const Text('Verificar Fila de Alarmes no Android'),
+              ),
+            ),
             const SizedBox(height: 28),
 
             // SEÇÃO: BACKUP E RESTAURAÇÃO LOCAL (100% OFFLINE)

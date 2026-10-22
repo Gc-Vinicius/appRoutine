@@ -1,7 +1,6 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/widgets.dart';
 import 'notification_service.dart';
-import 'local_storage_service.dart';
 import '../../features/routine/domain/routine_model.dart';
 
 /// Top-level callback executado pelo AlarmManager quando o celular acorda do Doze Mode
@@ -10,22 +9,17 @@ void alarmDispatchCallback(int id) async {
   debugPrint('[AlarmManager] Callback disparado para o ID: $id');
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Buscar dados reais da rotina persistida
-  final routines = await LocalStorageService.loadRoutines();
-  RoutineModel? matched;
-  if (routines != null) {
-    try {
-      matched = routines.firstWhere((r) => r.id == id);
-    } catch (_) {}
+  try {
+    final notifService = NotificationService();
+    await notifService.initialize();
+    await notifService.showNotification(
+      id: id,
+      title: 'Hora da Rotina!',
+      body: 'Alarme disparado no seu horário programado.',
+    );
+  } catch (e) {
+    debugPrint('[AlarmManager] Erro no callback de background: $e');
   }
-
-  final notifService = NotificationService();
-  await notifService.initialize();
-  await notifService.showNotification(
-    id: id,
-    title: matched?.title ?? 'Hora da Rotina!',
-    body: matched?.body ?? 'Alarme disparado no seu horário programado.',
-  );
 }
 
 /// Serviço de agendamento com redundância nativa (RNF02)
