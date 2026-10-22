@@ -7,6 +7,8 @@ abstract class RoutineRepository {
   Future<RoutineModel> saveRoutine(RoutineModel routine);
   Future<void> deleteRoutine(int id);
   Future<void> toggleRoutineActive(int id, bool isActive);
+  Future<void> toggleSkipNext(int id);
+  Future<void> reloadFromStorage();
 }
 
 class LocalRoutineRepository implements RoutineRepository {
@@ -130,6 +132,52 @@ class LocalRoutineRepository implements RoutineRepository {
       }
 
       await LocalStorageService.saveRoutines(_cachedRoutines);
+    }
+  }
+
+  @override
+  Future<void> toggleSkipNext(int id) async {
+    await _ensureInitialized();
+    final index = _cachedRoutines.indexWhere((r) => r.id == id);
+    if (index >= 0) {
+      final routine = _cachedRoutines[index];
+      final DateTime? newSkippedUntil;
+      if (routine.isCurrentlySkipped) {
+        newSkippedUntil = null; // Reativa o alarme normal
+      } else {
+        final next = routine.nextOccurrence;
+        if (next != null) {
+          // Pausa até 1 minuto após a ocorrência que seria disparada
+          newSkippedUntil = next.add(const Duration(minutes: 1));
+        } else {
+          newSkippedUntil = DateTime.now().add(const Duration(days: 1));
+        }
+      }
+
+      final updated = routine.copyWith(skippedUntil: newSkippedUntil);
+      _cachedRoutines[index] = updated;
+
+      if (updated.isActive && !updated.isCurrentlySkipped) {
+        _scheduleRoutineAlarm(updated);
+      }
+
+      await LocalStorageService.saveRoutines(_cachedRoutines);
+    }
+  }
+
+  @override
+  Future<void> reloadFromStorage() async {
+    final persisted = await LocalStorageService.loadRoutines();
+    if (persisted != null) {
+      _cachedRoutines = List.from(persisted);
+      // Re-agenda alarmes para todas as rotinas ativas
+      for (final routine in _cachedRoutines) {
+        if (routine.isActive && !routine.isCurrentlySkipped) {
+          _scheduleRoutineAlarm(routine);
+        } else if (routine.id != null) {
+          await _alarmScheduler.cancelAlarm(routine.id!);
+        }
+      }
     }
   }
 

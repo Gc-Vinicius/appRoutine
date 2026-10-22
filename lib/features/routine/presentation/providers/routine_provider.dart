@@ -33,6 +33,16 @@ class RoutineListNotifier extends StateNotifier<List<RoutineModel>> {
     await _repository.toggleRoutineActive(id, isActive);
     await loadRoutines();
   }
+
+  Future<void> toggleSkipNext(int id) async {
+    await _repository.toggleSkipNext(id);
+    await loadRoutines();
+  }
+
+  Future<void> reloadFromStorage() async {
+    await _repository.reloadFromStorage();
+    await loadRoutines();
+  }
 }
 
 final routineListProvider = StateNotifierProvider<RoutineListNotifier, List<RoutineModel>>((ref) {
