@@ -67,6 +67,49 @@ class RoutineModel {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'body': body,
+      'type': type.name,
+      'hour': hour,
+      'minute': minute,
+      'weekdays': weekdays,
+      'intervalMinutes': intervalMinutes,
+      'windowStartHour': windowStartHour,
+      'windowEndHour': windowEndHour,
+      'punctualDate': punctualDate?.toIso8601String(),
+      'isActive': isActive,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  factory RoutineModel.fromJson(Map<String, dynamic> json) {
+    return RoutineModel(
+      id: json['id'] as int?,
+      title: json['title'] as String,
+      body: json['body'] as String,
+      type: RoutineType.values.firstWhere(
+        (t) => t.name == json['type'],
+        orElse: () => RoutineType.recurring,
+      ),
+      hour: json['hour'] as int,
+      minute: json['minute'] as int,
+      weekdays: (json['weekdays'] as List<dynamic>?)?.map((e) => e as int).toList() ?? const [],
+      intervalMinutes: json['intervalMinutes'] as int?,
+      windowStartHour: json['windowStartHour'] as int?,
+      windowEndHour: json['windowEndHour'] as int?,
+      punctualDate: json['punctualDate'] != null
+          ? DateTime.tryParse(json['punctualDate'] as String)
+          : null,
+      isActive: json['isActive'] as bool? ?? true,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
   String get formattedTime {
     final h = hour.toString().padLeft(2, '0');
     final m = minute.toString().padLeft(2, '0');
@@ -93,7 +136,8 @@ class RoutineModel {
           return 'Segunda a Sexta';
         }
         const dayNames = {1: 'Seg', 2: 'Ter', 3: 'Qua', 4: 'Qui', 5: 'Sex', 6: 'Sáb', 7: 'Dom'};
-        return weekdays.map((d) => dayNames[d] ?? '').join(', ');
+        final sorted = List<int>.from(weekdays)..sort();
+        return sorted.map((d) => dayNames[d] ?? '').join(', ');
 
       case RoutineType.periodic:
         final hours = (intervalMinutes ?? 120) ~/ 60;

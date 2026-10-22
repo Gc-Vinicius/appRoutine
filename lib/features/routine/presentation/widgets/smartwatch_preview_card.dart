@@ -16,7 +16,7 @@ class SmartwatchPreviewCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(themeProvider.notifier).currentPaletteData;
+    final palette = ref.watch(currentPaletteProvider);
 
     return Container(
       padding: const EdgeInsets.all(14),

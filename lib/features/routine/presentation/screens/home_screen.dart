@@ -5,6 +5,7 @@ import '../widgets/routine_card.dart';
 import 'create_routine_screen.dart';
 import 'diagnostic_screen.dart';
 import 'theme_selector_screen.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -12,7 +13,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(themeProvider.notifier).currentPaletteData;
+    // Escuta reativamente o provedor de paleta para atualização instantânea
+    final palette = ref.watch(currentPaletteProvider);
     final routines = ref.watch(filteredRoutinesProvider);
     final activeFilter = ref.watch(routineFilterProvider);
 
@@ -23,7 +25,7 @@ class HomeScreen extends ConsumerWidget {
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white,
+              color: palette.surface,
               border: Border.all(color: palette.border, width: 1.2),
             ),
             child: ClipOval(
@@ -194,7 +196,7 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildFilterTab(
     WidgetRef ref,
-    dynamic palette,
+    AppPaletteData palette,
     String filterKey,
     String label,
     String activeKey,
@@ -218,7 +220,7 @@ class HomeScreen extends ConsumerWidget {
             fontSize: 11.5,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             color: isSelected
-                ? (palette.isDark ? palette.textPrimary : Colors.white)
+                ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
                 : palette.textMuted,
           ),
         ),

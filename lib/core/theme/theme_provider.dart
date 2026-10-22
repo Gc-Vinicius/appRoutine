@@ -1,25 +1,36 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_colors.dart';
+import '../services/local_storage_service.dart';
 
-/// Notifier para seleção e alternância dinâmica de temas (RF07)
+/// Provedor para injetar o tema inicial carregado do disco
+final initialThemePaletteProvider = Provider<AppThemePalette>((ref) {
+  return AppThemePalette.taigaNordica;
+});
+
+/// Notifier para seleção e alternância dinâmica de temas com persistência local (RF07)
 class ThemeNotifier extends StateNotifier<AppThemePalette> {
-  ThemeNotifier() : super(AppThemePalette.taigaNordica);
+  ThemeNotifier(super.initial);
 
-  void setPalette(AppThemePalette palette) {
+  Future<void> setPalette(AppThemePalette palette) async {
     state = palette;
+    await LocalStorageService.saveTheme(palette);
   }
 
-  void setPaletteById(String id) {
+  Future<void> setPaletteById(String id) async {
+    AppThemePalette? target;
     switch (id) {
       case 'carmim_pergaminho':
-        state = AppThemePalette.carmimPergaminho;
+        target = AppThemePalette.carmimPergaminho;
         break;
       case 'taiga_nordica':
-        state = AppThemePalette.taigaNordica;
+        target = AppThemePalette.taigaNordica;
         break;
       case 'brisa_costeira':
-        state = AppThemePalette.brisaCosteira;
+        target = AppThemePalette.brisaCosteira;
         break;
+    }
+    if (target != null) {
+      await setPalette(target);
     }
   }
 
@@ -27,5 +38,12 @@ class ThemeNotifier extends StateNotifier<AppThemePalette> {
 }
 
 final themeProvider = StateNotifierProvider<ThemeNotifier, AppThemePalette>((ref) {
-  return ThemeNotifier();
+  final initial = ref.watch(initialThemePaletteProvider);
+  return ThemeNotifier(initial);
+});
+
+/// Provedor reativo oficial de AppPaletteData que notifica os widgets quando o tema é alterado
+final currentPaletteProvider = Provider<AppPaletteData>((ref) {
+  final paletteEnum = ref.watch(themeProvider);
+  return AppPalettes.getPalette(paletteEnum);
 });

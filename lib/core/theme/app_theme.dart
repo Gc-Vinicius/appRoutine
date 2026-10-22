@@ -13,7 +13,7 @@ class AppTheme {
             primary: palette.primary,
             secondary: palette.secondary,
             surface: palette.surface,
-            onPrimary: isDark ? palette.textPrimary : Colors.white,
+            onPrimary: palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white,
             onSecondary: palette.textPrimary,
             onSurface: palette.textPrimary,
             outline: palette.border,
@@ -66,7 +66,7 @@ class AppTheme {
       // Botão Flutuante (FAB)
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: palette.primary,
-        foregroundColor: isDark ? palette.textPrimary : Colors.white,
+        foregroundColor: (isDark && palette.id == 'carmim_pergaminho') ? palette.textPrimary : Colors.white,
         elevation: 4,
         shape: const CircleBorder(),
       ),
@@ -75,7 +75,7 @@ class AppTheme {
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return isDark ? palette.textPrimary : Colors.white;
+            return (isDark && palette.id == 'carmim_pergaminho') ? palette.textPrimary : Colors.white;
           }
           return palette.textMuted;
         }),
@@ -113,7 +113,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: palette.primary,
-          foregroundColor: isDark ? palette.textPrimary : Colors.white,
+          foregroundColor: (isDark && palette.id == 'carmim_pergaminho') ? palette.textPrimary : Colors.white,
           minimumSize: const Size.fromHeight(50),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -121,6 +121,56 @@ class AppTheme {
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           elevation: 0,
         ),
+      ),
+
+      // Diálogos e Modais
+      dialogTheme: DialogThemeData(
+        backgroundColor: palette.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: palette.border),
+        ),
+        titleTextStyle: TextStyle(
+          color: palette.textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+        contentTextStyle: TextStyle(
+          color: palette.textSecondary,
+          fontSize: 14,
+        ),
+      ),
+
+      // Seletor de Horário (TimePicker)
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: palette.surface,
+        hourMinuteColor: palette.surfaceVariant,
+        hourMinuteTextColor: palette.textPrimary,
+        dialHandColor: palette.primary,
+        dialBackgroundColor: palette.surfaceVariant,
+        dialTextColor: palette.textPrimary,
+        entryModeIconColor: palette.primary,
+      ),
+
+      // Seletor de Data (DatePicker)
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: palette.surface,
+        headerBackgroundColor: palette.surface,
+        headerForegroundColor: palette.textPrimary,
+        todayForegroundColor: WidgetStateProperty.all(palette.primary),
+        dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return (isDark && palette.id == 'carmim_pergaminho') ? palette.textPrimary : Colors.white;
+          }
+          return palette.textPrimary;
+        }),
+        dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return palette.primary;
+          }
+          return null;
+        }),
       ),
 
       // Tipografia

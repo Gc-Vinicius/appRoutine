@@ -10,7 +10,7 @@ class DiagnosticScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(themeProvider.notifier).currentPaletteData;
+    final palette = ref.watch(currentPaletteProvider);
     final permAsync = ref.watch(permissionsProvider);
 
     return Scaffold(
@@ -41,7 +41,7 @@ class DiagnosticScreen extends ConsumerWidget {
                     ),
                     child: Icon(
                       Icons.check,
-                      color: palette.isDark ? palette.textPrimary : Colors.white,
+                      color: palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white,
                       size: 26,
                     ),
                   ),
@@ -270,7 +270,7 @@ class DiagnosticScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: palette.isDark ? palette.textPrimary : Colors.white,
+                color: palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white,
               ),
             ),
           ),

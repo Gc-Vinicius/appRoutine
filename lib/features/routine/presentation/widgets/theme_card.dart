@@ -79,7 +79,7 @@ class ThemeCard extends StatelessWidget {
                       ? Icon(
                           Icons.check,
                           size: 14,
-                          color: palette.isDark ? palette.textPrimary : Colors.white,
+                          color: palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white,
                         )
                       : null,
                 ),
@@ -175,7 +175,7 @@ class ThemeCard extends StatelessWidget {
                       height: 14,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: palette.isDark ? palette.textPrimary : Colors.white,
+                        color: palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white,
                       ),
                     ),
                   ),

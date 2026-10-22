@@ -9,7 +9,8 @@ class ThemeSelectorScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activePalette = ref.watch(themeProvider.notifier).currentPaletteData;
+    // Escuta reativamente a paleta atual
+    final activePalette = ref.watch(currentPaletteProvider);
 
     final allThemes = [
       AppPalettes.carmimPergaminho,
@@ -53,10 +54,11 @@ class ThemeSelectorScreen extends ConsumerWidget {
                 isSelected: pal.id == activePalette.id,
                 onSelect: () {
                   ref.read(themeProvider.notifier).setPaletteById(pal.id);
+                  ScaffoldMessenger.of(context).clearSnackBars();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      duration: const Duration(seconds: 1),
-                      content: Text('Tema alterado para "${pal.name}".'),
+                      duration: const Duration(milliseconds: 1200),
+                      content: Text('Tema "${pal.name}" aplicado!'),
                     ),
                   );
                 },

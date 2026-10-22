@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/services/alarm_scheduler_service.dart';
+import 'core/services/local_storage_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
@@ -16,9 +17,15 @@ void main() async {
   final alarmScheduler = AlarmSchedulerService();
   await alarmScheduler.initialize();
 
+  // Carrega a preferência de tema salva em disco
+  final savedPalette = await LocalStorageService.loadSavedTheme();
+
   runApp(
-    const ProviderScope(
-      child: AppRoutine(),
+    ProviderScope(
+      overrides: [
+        initialThemePaletteProvider.overrideWithValue(savedPalette),
+      ],
+      child: const AppRoutine(),
     ),
   );
 }

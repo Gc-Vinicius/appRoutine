@@ -8,7 +8,9 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/theme_provider.dart';
 
 class CreateRoutineScreen extends ConsumerStatefulWidget {
-  const CreateRoutineScreen({super.key});
+  final RoutineModel? routineToEdit;
+
+  const CreateRoutineScreen({super.key, this.routineToEdit});
 
   @override
   ConsumerState<CreateRoutineScreen> createState() => _CreateRoutineScreenState();
@@ -18,17 +20,36 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
 
-  RoutineType _selectedType = RoutineType.recurring;
-  TimeOfDay _selectedTime = const TimeOfDay(hour: 7, minute: 0);
-  final List<int> _selectedWeekdays = [1, 2, 3, 4, 5]; // Seg a Sex padrão
-  DateTime _selectedPunctualDate = DateTime.now().add(const Duration(days: 1));
-  final int _intervalMinutes = 120; // 2 horas
+  late RoutineType _selectedType;
+  late TimeOfDay _selectedTime;
+  late List<int> _selectedWeekdays;
+  late DateTime _selectedPunctualDate;
+  int _intervalMinutes = 120; // 2 horas
+
+  bool get _isEditing => widget.routineToEdit != null;
 
   @override
   void initState() {
     super.initState();
-    _titleController.text = 'Tomar Creatina';
-    _bodyController.text = 'Tomar 5g creatina com 500ml de água';
+
+    final toEdit = widget.routineToEdit;
+    if (toEdit != null) {
+      _titleController.text = toEdit.title;
+      _bodyController.text = toEdit.body;
+      _selectedType = toEdit.type;
+      _selectedTime = TimeOfDay(hour: toEdit.hour, minute: toEdit.minute);
+      _selectedWeekdays = List<int>.from(toEdit.weekdays);
+      _selectedPunctualDate = toEdit.punctualDate ?? DateTime.now().add(const Duration(days: 1));
+      _intervalMinutes = toEdit.intervalMinutes ?? 120;
+    } else {
+      _titleController.text = '';
+      _bodyController.text = '';
+      _selectedType = RoutineType.recurring;
+      _selectedTime = const TimeOfDay(hour: 7, minute: 0);
+      _selectedWeekdays = [1, 2, 3, 4, 5]; // Seg a Sex padrão
+      _selectedPunctualDate = DateTime.now().add(const Duration(days: 1));
+      _intervalMinutes = 120;
+    }
 
     _titleController.addListener(() => setState(() {}));
     _bodyController.addListener(() => setState(() {}));
@@ -63,20 +84,61 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
     }
   }
 
-  void _saveRoutine() {
+  Future<void> _confirmDelete() async {
+    final palette = ref.read(currentPaletteProvider);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir Rotina?'),
+        content: const Text(
+          'Esta ação cancelará o alarme programado no relógio e removerá o item permanentemente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar', style: TextStyle(color: palette.textMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await ref.read(routineListProvider.notifier).deleteRoutine(widget.routineToEdit!.id!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Rotina excluída com sucesso.')),
+        );
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  void _saveRoutine() async {
     final title = _titleController.text.trim();
     final body = _bodyController.text.trim();
 
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, informe um título.')),
+        const SnackBar(content: Text('Por favor, informe um título para a rotina.')),
+      );
+      return;
+    }
+
+    if (_selectedType == RoutineType.recurring && _selectedWeekdays.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecione pelo menos um dia da semana para a rotina recorrente.')),
       );
       return;
     }
 
     final newRoutine = RoutineModel(
+      id: widget.routineToEdit?.id,
       title: title,
-      body: body,
+      body: body.isEmpty ? title : body,
       type: _selectedType,
       hour: _selectedTime.hour,
       minute: _selectedTime.minute,
@@ -85,33 +147,45 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       windowStartHour: _selectedType == RoutineType.periodic ? 8 : null,
       windowEndHour: _selectedType == RoutineType.periodic ? 20 : null,
       punctualDate: _selectedType == RoutineType.punctual ? _selectedPunctualDate : null,
-      isActive: true,
-      createdAt: DateTime.now(),
+      isActive: widget.routineToEdit?.isActive ?? true,
+      createdAt: widget.routineToEdit?.createdAt ?? DateTime.now(),
     );
 
-    ref.read(routineListProvider.notifier).addOrUpdateRoutine(newRoutine);
+    await ref.read(routineListProvider.notifier).addOrUpdateRoutine(newRoutine);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Alarme salvo e agendado com sucesso!')),
-    );
-
-    Navigator.pop(context);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isEditing
+              ? 'Rotina atualizada com sucesso!'
+              : 'Alarme salvo e agendado com sucesso!'),
+        ),
+      );
+      Navigator.pop(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final palette = ref.watch(themeProvider.notifier).currentPaletteData;
+    // Reatividade imediata de tema
+    final palette = ref.watch(currentPaletteProvider);
     final timeStr =
         '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Novo Alarme de Rotina'),
+        title: Text(_isEditing ? 'Editar Alarme de Rotina' : 'Novo Alarme de Rotina'),
         actions: [
+          if (_isEditing)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              tooltip: 'Excluir Rotina',
+              onPressed: _confirmDelete,
+            ),
           TextButton(
             onPressed: _saveRoutine,
             child: Text(
-              'Salvar',
+              _isEditing ? 'Atualizar' : 'Salvar',
               style: TextStyle(
                 color: palette.primary,
                 fontWeight: FontWeight.bold,
@@ -321,7 +395,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  '${_selectedPunctualDate.day}/${_selectedPunctualDate.month}',
+                                  '${_selectedPunctualDate.day.toString().padLeft(2, '0')}/${_selectedPunctualDate.month.toString().padLeft(2, '0')}',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -356,11 +430,11 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
               const SizedBox(height: 16),
             ],
 
-            // Botão Salvar
+            // Botão Salvar / Atualizar
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _saveRoutine,
-              child: const Text('Salvar e Agendar Alarme'),
+              child: Text(_isEditing ? 'Atualizar Alarme de Rotina' : 'Salvar e Agendar Alarme'),
             ),
           ],
         ),
@@ -386,7 +460,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
               fontSize: 12,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               color: isSelected
-                  ? (palette.isDark ? palette.textPrimary : Colors.white)
+                  ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
                   : palette.textMuted,
             ),
           ),
@@ -396,7 +470,8 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   }
 
   Widget _buildWeekdaySelector(dynamic palette) {
-    const days = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+    // 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb, 7=Dom
+    const days = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(7, (index) {
@@ -430,7 +505,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: isSelected
-                    ? (palette.isDark ? palette.textPrimary : Colors.white)
+                    ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
                     : palette.textMuted,
               ),
             ),
