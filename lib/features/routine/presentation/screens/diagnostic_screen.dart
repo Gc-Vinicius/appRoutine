@@ -15,7 +15,7 @@ class DiagnosticScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Diagnóstico & Conexão'),
+        title: const Text('Configurações'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -71,7 +71,7 @@ class DiagnosticScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // SEÇÃO 1: Permissões do Android
+            // SEÇÃO: Permissões Nativas do Android (Sem termos técnicos de código)
             Text(
               'PERMISSÕES NATIVAS DO ANDROID',
               style: TextStyle(
@@ -89,8 +89,8 @@ class DiagnosticScreen extends ConsumerWidget {
                   children: [
                     _buildPermissionItem(
                       palette: palette,
-                      title: 'Alarmes Exatos (SCHEDULE_EXACT_ALARM)',
-                      desc: 'Permite agendar disparos no segundo exato com exactAllowWhileIdle.',
+                      title: 'Alarmes Exatos',
+                      desc: 'Permite agendar disparos no segundo exato furando o modo de espera.',
                       isGranted: perms.hasExactAlarm,
                       onRequest: () async {
                         await PermissionService().requestExactAlarmPermission();
@@ -99,8 +99,8 @@ class DiagnosticScreen extends ConsumerWidget {
                     ),
                     _buildPermissionItem(
                       palette: palette,
-                      title: 'Notificações Locais (POST_NOTIFICATIONS)',
-                      desc: 'Exigido no Android 13+ para emitir o aviso com som e vibração.',
+                      title: 'Notificações Locais',
+                      desc: 'Exigido no Android para emitir o aviso sonoro e vibratório no relógio.',
                       isGranted: perms.hasNotification,
                       onRequest: () async {
                         await PermissionService().requestNotificationPermission();
@@ -110,7 +110,7 @@ class DiagnosticScreen extends ConsumerWidget {
                     _buildPermissionItem(
                       palette: palette,
                       title: 'Isenção de Economia de Bateria',
-                      desc: 'Impede o sistema operacional de congelar o agendador em background.',
+                      desc: 'Impede o sistema operacional de congelar os alarmes em segundo plano.',
                       isGranted: perms.hasBatteryOptimizationExemption,
                       onRequest: () async {
                         await PermissionService().requestBatteryOptimizationExemption();
@@ -122,38 +122,6 @@ class DiagnosticScreen extends ConsumerWidget {
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (_, __) => Text('Erro ao checar permissões', style: TextStyle(color: palette.textMuted)),
-            ),
-            const SizedBox(height: 24),
-
-            // SEÇÃO 2: Checklist do Smartwatch Haylou Fun
-            Text(
-              'CHECKLIST DO HAYLOU SOLAR NEO (APP PONTE)',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: palette.textMuted,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            _buildChecklistStep(
-              palette: palette,
-              step: '1',
-              title: 'Smartwatch pareado via Bluetooth no Haylou Fun',
-              desc: 'Abra o app Haylou Fun e certifique-se de que o relógio está "Conectado".',
-            ),
-            _buildChecklistStep(
-              palette: palette,
-              step: '2',
-              title: 'App autorizado na lista de notificações do Haylou Fun',
-              desc: 'Vá em Dispositivo > Notificações > Outros Apps e ative este aplicativo.',
-            ),
-            _buildChecklistStep(
-              palette: palette,
-              step: '3',
-              title: 'Permissão de escuta de notificações concedida',
-              desc: 'O Haylou Fun precisa de acesso ao NotificationListenerService do Android.',
             ),
             const SizedBox(height: 24),
 
@@ -203,7 +171,7 @@ class DiagnosticScreen extends ConsumerWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: palette.textPrimary,
                   ),
@@ -233,66 +201,6 @@ class DiagnosticScreen extends ConsumerWidget {
                   color: isGranted ? palette.badgeText : palette.primary,
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChecklistStep({
-    required dynamic palette,
-    required String step,
-    required String title,
-    required String desc,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: palette.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: palette.primary,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              step,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: palette.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  desc,
-                  style: TextStyle(fontSize: 10.5, color: palette.textMuted),
-                ),
-              ],
             ),
           ),
         ],

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/routine_model.dart';
 import '../providers/routine_provider.dart';
 import '../widgets/smartwatch_preview_card.dart';
+import '../widgets/time_wheel_picker_dialog.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/theme_provider.dart';
 
@@ -39,7 +40,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _selectedType = toEdit.type;
       _selectedTime = TimeOfDay(hour: toEdit.hour, minute: toEdit.minute);
       _selectedWeekdays = List<int>.from(toEdit.weekdays);
-      _selectedPunctualDate = toEdit.punctualDate ?? DateTime.now().add(const Duration(days: 1));
+      _selectedPunctualDate = toEdit.punctualDate ?? DateTime.now();
       _intervalMinutes = toEdit.intervalMinutes ?? 120;
     } else {
       _titleController.text = '';
@@ -47,7 +48,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _selectedType = RoutineType.recurring;
       _selectedTime = const TimeOfDay(hour: 7, minute: 0);
       _selectedWeekdays = [1, 2, 3, 4, 5]; // Seg a Sex padrão
-      _selectedPunctualDate = DateTime.now().add(const Duration(days: 1));
+      _selectedPunctualDate = DateTime.now();
       _intervalMinutes = 120;
     }
 
@@ -63,9 +64,11 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
+    final palette = ref.read(currentPaletteProvider);
+    final picked = await TimeWheelPickerDialog.show(
       context: context,
       initialTime: _selectedTime,
+      palette: palette,
     );
     if (picked != null) {
       setState(() => _selectedTime = picked);
@@ -135,6 +138,23 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       return;
     }
 
+    DateTime? punctualDate;
+    if (_selectedType == RoutineType.punctual) {
+      final now = DateTime.now();
+      DateTime target = DateTime(
+        _selectedPunctualDate.year,
+        _selectedPunctualDate.month,
+        _selectedPunctualDate.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
+      );
+      // Se selecionou para hoje mas o horário já passou, ajusta automaticamente para o dia seguinte
+      if (target.isBefore(now)) {
+        target = target.add(const Duration(days: 1));
+      }
+      punctualDate = target;
+    }
+
     final newRoutine = RoutineModel(
       id: widget.routineToEdit?.id,
       title: title,
@@ -146,7 +166,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       intervalMinutes: _selectedType == RoutineType.periodic ? _intervalMinutes : null,
       windowStartHour: _selectedType == RoutineType.periodic ? 8 : null,
       windowEndHour: _selectedType == RoutineType.periodic ? 20 : null,
-      punctualDate: _selectedType == RoutineType.punctual ? _selectedPunctualDate : null,
+      punctualDate: punctualDate,
       isActive: widget.routineToEdit?.isActive ?? true,
       createdAt: widget.routineToEdit?.createdAt ?? DateTime.now(),
     );

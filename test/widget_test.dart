@@ -10,6 +10,6 @@ void main() {
       ),
     );
 
-    expect(find.text('Alarmes & Hábitos'), findsOneWidget);
+    expect(find.text('Rotinas & Hábitos'), findsOneWidget);
   });
 }

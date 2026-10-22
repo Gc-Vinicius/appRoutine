@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/routine_provider.dart';
 import '../widgets/routine_card.dart';
+import '../widgets/live_clock_widget.dart';
 import 'create_routine_screen.dart';
 import 'diagnostic_screen.dart';
 import 'theme_selector_screen.dart';
@@ -13,44 +14,38 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Escuta reativamente o provedor de paleta para atualização instantânea
     final palette = ref.watch(currentPaletteProvider);
     final routines = ref.watch(filteredRoutinesProvider);
     final activeFilter = ref.watch(routineFilterProvider);
 
     return Scaffold(
       appBar: AppBar(
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 14.0, top: 8.0, bottom: 8.0),
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: palette.surface,
-              border: Border.all(color: palette.border, width: 1.2),
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/icon/app_logo_512.png',
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Icon(Icons.alarm, color: palette.primary),
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: palette.surface,
+                border: Border.all(color: palette.border, width: 1.2),
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/icon/app_logo_512.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Icon(Icons.alarm, size: 18, color: palette.primary),
+                ),
               ),
             ),
-          ),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+            const SizedBox(width: 10),
             Text(
-              'Alarmes & Hábitos',
+              'Rotinas & Hábitos',
               style: TextStyle(
                 color: palette.textPrimary,
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
-            ),
-            Text(
-              'Sincronização Ativa Haylou Solar Neo',
-              style: TextStyle(color: palette.textMuted, fontSize: 11),
             ),
           ],
         ),
@@ -66,8 +61,8 @@ class HomeScreen extends ConsumerWidget {
             },
           ),
           IconButton(
-            icon: Icon(Icons.shield_outlined, color: palette.primary),
-            tooltip: 'Diagnóstico & Bateria',
+            icon: Icon(Icons.settings_outlined, color: palette.primary),
+            tooltip: 'Configurações',
             onPressed: () {
               Navigator.push(
                 context,
@@ -80,74 +75,8 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // Badge Haylou Conectado + Banner Doze Mode
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: palette.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: palette.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.watch_outlined, size: 14, color: palette.primary),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Haylou Solar Neo Conectado',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: palette.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Banner Otimização Doze Mode
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: palette.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: palette.border),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.bolt, color: palette.primary, size: 22),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Alarmes com Exatidão Máxima (Doze Mode)',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: palette.textPrimary,
-                              ),
-                            ),
-                            Text(
-                              'Isenção de bateria ativa • Disparo no segundo exato',
-                              style: TextStyle(fontSize: 10.5, color: palette.textMuted),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Widget de Relógio Ao Vivo (Analógico + Digital) solicitado na Imagem 2
+          const LiveClockWidget(),
 
           // Filtros Rápidos (Tabs)
           SingleChildScrollView(
@@ -155,7 +84,7 @@ class HomeScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(
               children: [
-                _buildFilterTab(ref, palette, 'all', 'Todos (${ref.watch(routineListProvider).length})', activeFilter),
+                _buildFilterTab(ref, palette, 'all', 'Todos', activeFilter),
                 _buildFilterTab(ref, palette, 'recurring', 'Recorrentes', activeFilter),
                 _buildFilterTab(ref, palette, 'periodic', 'Periódicos', activeFilter),
                 _buildFilterTab(ref, palette, 'punctual', 'Pontuais', activeFilter),
@@ -208,7 +137,7 @@ class HomeScreen extends ConsumerWidget {
       },
       child: Container(
         margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected ? palette.primary : palette.surface,
           borderRadius: BorderRadius.circular(16),
@@ -217,7 +146,7 @@ class HomeScreen extends ConsumerWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 11.5,
+            fontSize: 12,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             color: isSelected
                 ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)

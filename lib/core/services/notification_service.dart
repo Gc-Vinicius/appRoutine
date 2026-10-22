@@ -1,5 +1,8 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import '../constants/app_constants.dart';
+import '../../features/routine/domain/routine_model.dart';
 
 /// Serviço responsável por emitir notificações locais nativas com canal de alta prioridade.
 /// O app ponte do smartwatch (Haylou Fun) intercepta estas notificações e as repassa ao pulso via BLE.
@@ -9,8 +12,24 @@ class NotificationService {
   NotificationService._internal();
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  bool _isInitialized = false;
 
   Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    tz.initializeTimeZones();
+    try {
+      final now = DateTime.now();
+      final locationName = now.timeZoneName;
+      try {
+        tz.setLocalLocation(tz.getLocation(locationName));
+      } catch (_) {
+        tz.setLocalLocation(tz.getLocation('America/Sao_Paulo'));
+      }
+    } catch (_) {
+      tz.setLocalLocation(tz.getLocation('America/Sao_Paulo'));
+    }
+
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidSettings);
 
@@ -22,6 +41,7 @@ class NotificationService {
     );
 
     await _createHighPriorityChannel();
+    _isInitialized = true;
   }
 
   /// Cria o canal nativo de Alta Prioridade com som e vibração habilitados (RNF06)
@@ -41,33 +61,136 @@ class NotificationService {
         ?.createNotificationChannel(androidChannel);
   }
 
+  NotificationDetails _buildNotificationDetails(String title) {
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        AppConstants.notificationChannelId,
+        AppConstants.notificationChannelName,
+        channelDescription: AppConstants.notificationChannelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        ticker: title,
+        category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
+        fullScreenIntent: true,
+      ),
+    );
+  }
+
   /// Dispara notificação local nativa imediata
   Future<void> showNotification({
     required int id,
     required String title,
     required String body,
   }) async {
-    final androidDetails = AndroidNotificationDetails(
-      AppConstants.notificationChannelId,
-      AppConstants.notificationChannelName,
-      channelDescription: AppConstants.notificationChannelDescription,
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-      ticker: title,
-      category: AndroidNotificationCategory.alarm,
-      visibility: NotificationVisibility.public,
-    );
-
-    final notificationDetails = NotificationDetails(android: androidDetails);
-
+    await initialize();
     await _notificationsPlugin.show(
       id,
       title,
       body,
-      notificationDetails,
+      _buildNotificationDetails(title),
     );
+  }
+
+  /// Agenda alarme nativo com exactAllowWhileIdle no sistema operacional
+  Future<void> scheduleRoutineNotification(RoutineModel routine) async {
+    if (routine.id == null || !routine.isActive) return;
+    await initialize();
+
+    final now = DateTime.now();
+    final details = _buildNotificationDetails(routine.title);
+
+    // Limpar agendamentos anteriores do mesmo ID
+    await cancelRoutine(routine.id!);
+
+    if (routine.type == RoutineType.punctual) {
+      DateTime target = routine.punctualDate ?? DateTime(now.year, now.month, now.day, routine.hour, routine.minute);
+      target = DateTime(target.year, target.month, target.day, routine.hour, routine.minute);
+
+      // Se o horário especificado hoje já passou, não agenda no passado
+      if (target.isAfter(now)) {
+        final tzTarget = tz.TZDateTime.from(target, tz.local);
+        await _notificationsPlugin.zonedSchedule(
+          routine.id!,
+          routine.title,
+          routine.body,
+          tzTarget,
+          details,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        );
+      }
+    } else if (routine.type == RoutineType.recurring) {
+      if (routine.weekdays.isEmpty) return;
+
+      for (final weekday in routine.weekdays) {
+        final subId = (routine.id! * 10) + weekday;
+        final target = _nextInstanceOfDay(weekday, routine.hour, routine.minute);
+        final tzTarget = tz.TZDateTime.from(target, tz.local);
+
+        await _notificationsPlugin.zonedSchedule(
+          subId,
+          routine.title,
+          routine.body,
+          tzTarget,
+          details,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        );
+      }
+    } else if (routine.type == RoutineType.periodic) {
+      final interval = routine.intervalMinutes ?? 120;
+      final startH = routine.windowStartHour ?? 8;
+      final endH = routine.windowEndHour ?? 20;
+      final stepHours = (interval ~/ 60).clamp(1, 24);
+
+      int slot = 0;
+      for (int h = startH; h <= endH; h += stepHours) {
+        final subId = (routine.id! * 100) + slot;
+        slot++;
+
+        DateTime target = DateTime(now.year, now.month, now.day, h, routine.minute);
+        if (target.isBefore(now)) {
+          target = target.add(const Duration(days: 1));
+        }
+
+        final tzTarget = tz.TZDateTime.from(target, tz.local);
+        await _notificationsPlugin.zonedSchedule(
+          subId,
+          routine.title,
+          routine.body,
+          tzTarget,
+          details,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
+      }
+    }
+  }
+
+  DateTime _nextInstanceOfDay(int targetWeekday, int hour, int minute) {
+    final now = DateTime.now();
+    DateTime scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);
+
+    while (scheduledDate.weekday != targetWeekday || scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    return scheduledDate;
+  }
+
+  /// Cancela a rotina e todas as instâncias associadas
+  Future<void> cancelRoutine(int id) async {
+    await _notificationsPlugin.cancel(id);
+    for (int day = 1; day <= 7; day++) {
+      await _notificationsPlugin.cancel((id * 10) + day);
+    }
+    for (int slot = 0; slot < 24; slot++) {
+      await _notificationsPlugin.cancel((id * 100) + slot);
+    }
   }
 
   /// Dispara notificação de teste imediato para validar no smartwatch Haylou Solar Neo
@@ -80,6 +203,6 @@ class NotificationService {
   }
 
   Future<void> cancelNotification(int id) async {
-    await _notificationsPlugin.cancel(id);
+    await cancelRoutine(id);
   }
 }

@@ -155,7 +155,7 @@ class LocalRoutineRepository implements RoutineRepository {
     }
 
     _alarmScheduler.scheduleExactAlarm(
-      id: routine.id!,
+      routine: routine,
       targetTime: targetTime,
     );
   }

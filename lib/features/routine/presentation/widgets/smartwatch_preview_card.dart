@@ -19,14 +19,14 @@ class SmartwatchPreviewCard extends ConsumerWidget {
     final palette = ref.watch(currentPaletteProvider);
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: palette.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: palette.border),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -34,7 +34,7 @@ class SmartwatchPreviewCard extends ConsumerWidget {
               Text(
                 'PRÉVIA NO SMARTWATCH (HAYLOU SOLAR NEO)',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.bold,
                   color: palette.primary,
                   letterSpacing: 0.5,
@@ -47,7 +47,7 @@ class SmartwatchPreviewCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  '✓ 100% VISÍVEL NO PULSO',
+                  '✓ VISÍVEL NO PULSO',
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
@@ -57,93 +57,100 @@ class SmartwatchPreviewCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              // Mockup do Relógio Circular AMOLED
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF101318),
-                  border: Border.all(color: const Color(0xFF384050), width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Container(
-                    width: 106,
-                    height: 106,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFF040608), // Display AMOLED profundo
-                    ),
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.notifications_active,
-                          size: 14,
-                          color: Color(0xFFF59E0B),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          title.isEmpty ? 'Título da Rotina' : title,
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+          const SizedBox(height: 16),
+
+          // Área Centralizada solicitada na Imagem 3
+          Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Mockup do Relógio Circular AMOLED
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF101318),
+                    border: Border.all(color: const Color(0xFF384050), width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 106,
+                      height: 106,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF040608), // Display AMOLED profundo
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.notifications_active,
+                            size: 14,
+                            color: Color(0xFFF59E0B),
                           ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          body.isEmpty ? 'Mensagem do alarme' : body,
-                          style: const TextStyle(
-                            fontSize: 7.5,
-                            color: Color(0xFFB0B8C4),
+                          const SizedBox(height: 3),
+                          Text(
+                            title.isEmpty ? 'Título da Rotina' : title,
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$time • Haylou',
-                          style: const TextStyle(
-                            fontSize: 6.5,
-                            color: Color(0xFF6B7280),
+                          const SizedBox(height: 2),
+                          Text(
+                            body.isEmpty ? 'Mensagem do alarme' : body,
+                            style: const TextStyle(
+                              fontSize: 7.5,
+                              color: Color(0xFFB0B8C4),
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            '$time • Haylou',
+                            style: const TextStyle(
+                              fontSize: 6.5,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
+                const SizedBox(width: 16),
 
-              // Informações do Espelhamento BLE
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFeatureBullet(palette, 'Sem cortes por reticências (...)'),
-                    _buildFeatureBullet(palette, 'Vibração forte com tela apagada'),
-                    _buildFeatureBullet(palette, 'Fura o Doze Mode da bateria'),
-                    _buildFeatureBullet(palette, 'Texto limpo sem formatação'),
-                  ],
+                // Informações do Espelhamento BLE
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildFeatureBullet(palette, 'Sem cortes por reticências (...)'),
+                      _buildFeatureBullet(palette, 'Vibração forte com tela apagada'),
+                      _buildFeatureBullet(palette, 'Fura o Doze Mode da bateria'),
+                      _buildFeatureBullet(palette, 'Texto limpo sem formatação'),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
