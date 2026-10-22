@@ -53,7 +53,7 @@ class DiagnosticScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Sistema 100% Otimizado!',
+                          'Sistema de Alarmes & Wearable',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
@@ -62,7 +62,7 @@ class DiagnosticScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'Alarmes configurados para furar o Doze Mode e vibrar no Haylou Solar Neo.',
+                          'Configure as permissões para o alarme furar o Doze Mode e vibrar no seu pulso.',
                           style: TextStyle(fontSize: 11, color: palette.textMuted),
                         ),
                       ],
@@ -73,7 +73,7 @@ class DiagnosticScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // SEÇÃO: Permissões Nativas do Android (Sem termos técnicos de código)
+            // SEÇÃO: Permissões Nativas do Android
             Text(
               'PERMISSÕES NATIVAS DO ANDROID',
               style: TextStyle(
@@ -91,8 +91,8 @@ class DiagnosticScreen extends ConsumerWidget {
                   children: [
                     _buildPermissionItem(
                       palette: palette,
-                      title: 'Alarmes Exatos',
-                      desc: 'Permite agendar disparos no segundo exato furando o modo de espera.',
+                      title: 'Alarmes Exatos (Alarmes & Lembretes)',
+                      desc: 'Permite ao Android despertar e tocar no segundo exato configurado.',
                       isGranted: perms.hasExactAlarm,
                       onRequest: () async {
                         await PermissionService().requestExactAlarmPermission();
@@ -127,20 +127,108 @@ class DiagnosticScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // Botão Disparar Teste de Vibração no Relógio Agora
-            ElevatedButton.icon(
-              onPressed: () async {
-                await NotificationService().testWatchNotification();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Notificação de teste disparada! Verifique a vibração no seu pulso.'),
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.vibration),
-              label: const Text('Disparar Teste de Vibração no Relógio Agora'),
+            // SEÇÃO: TESTES DE DISPARO
+            Text(
+              'TESTES DE DISPARO',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: palette.textMuted,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Botão Disparar Teste de Vibração Imediato
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  await NotificationService().testWatchNotification();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Notificação de teste imediata disparada! Verifique o relógio.'),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.vibration),
+                label: const Text('Disparar Teste Imediato no Relógio'),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Botão Testar Alarme Agendado (em 10 segundos)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await NotificationService().testScheduledNotificationInSeconds(seconds: 10);
+                  if (context.mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Alarme Agendado! ⏰'),
+                        content: const Text(
+                          'Disparo agendado para daqui a 10 segundos.\n\nBloqueie a tela do celular agora para testar o despertar em segundo plano e a vibração no smartwatch!',
+                        ),
+                        actions: [
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('OK, Vou Bloquear a Tela'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.alarm_on_outlined),
+                label: const Text('Testar Alarme Agendado (em 10 segundos)'),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Botão Consultar Fila de Alarmes no Android
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: () async {
+                  final list = await NotificationService().getPendingNotifications();
+                  if (context.mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text('Fila de Alarmes no Android (${list.length})'),
+                        content: SizedBox(
+                          width: double.maxFinite,
+                          child: list.isEmpty
+                              ? const Text('Nenhum alarme pendente agendado no sistema operacional no momento.')
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: list.length,
+                                  itemBuilder: (_, i) => ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    dense: true,
+                                    leading: const Icon(Icons.alarm, size: 20),
+                                    title: Text(list[i].title ?? 'Sem título', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    subtitle: Text(list[i].body ?? '', style: const TextStyle(fontSize: 11)),
+                                  ),
+                                ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Fechar'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.list_alt_rounded, size: 18),
+                label: const Text('Verificar Fila de Alarmes no Android'),
+              ),
             ),
             const SizedBox(height: 28),
 
@@ -238,7 +326,7 @@ class DiagnosticScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 10),
           GestureDetector(
-            onTap: isGranted ? null : onRequest,
+            onTap: onRequest,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(

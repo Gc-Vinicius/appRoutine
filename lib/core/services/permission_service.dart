@@ -1,4 +1,7 @@
+import 'dart:io' show Platform;
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'notification_service.dart';
 
 class SystemPermissionStatus {
   final bool hasNotification;
@@ -28,29 +31,50 @@ class PermissionService {
   factory PermissionService() => _instance;
   PermissionService._internal();
 
-  /// Verifica o status atual das permissões críticas do Android
+  /// Verifica o status real das permissões críticas do Android
   Future<SystemPermissionStatus> checkAllPermissions() async {
     final notifStatus = await Permission.notification.status;
-    final exactAlarmStatus = await Permission.scheduleExactAlarm.status;
+    final exactCan = await NotificationService().canScheduleExact();
     final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
 
     return SystemPermissionStatus(
       hasNotification: notifStatus.isGranted,
-      hasExactAlarm: exactAlarmStatus.isGranted,
+      hasExactAlarm: exactCan,
       hasBatteryOptimizationExemption: batteryStatus.isGranted,
     );
   }
 
   /// Solicita permissão de notificações (Android 13+)
   Future<bool> requestNotificationPermission() async {
-    final status = await Permission.notification.request();
-    return status.isGranted;
+    final granted = await NotificationService().requestNotificationPermission();
+    if (!granted) {
+      final status = await Permission.notification.request();
+      return status.isGranted;
+    }
+    return granted;
   }
 
-  /// Solicita permissão de alarme exato (Android 12+)
-  Future<bool> requestExactAlarmPermission() async {
-    final status = await Permission.scheduleExactAlarm.request();
-    return status.isGranted;
+  /// Redireciona o usuário para ativar 'Alarmes e Lembretes' no Android 12/13/14/15
+  Future<void> requestExactAlarmPermission() async {
+    await NotificationService().requestExactAlarmPermission();
+
+    if (Platform.isAndroid) {
+      try {
+        const intent = AndroidIntent(
+          action: 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM',
+          data: 'package:com.example.app_routine',
+        );
+        await intent.launch();
+      } catch (_) {
+        try {
+          const generalIntent = AndroidIntent(
+            action: 'android.settings.APPLICATION_DETAILS_SETTINGS',
+            data: 'package:com.example.app_routine',
+          );
+          await generalIntent.launch();
+        } catch (_) {}
+      }
+    }
   }
 
   /// Solicita isenção de otimização de bateria (Doze Mode / OEMs)

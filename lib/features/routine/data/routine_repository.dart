@@ -28,6 +28,13 @@ class LocalRoutineRepository implements RoutineRepository {
       await LocalStorageService.saveRoutines(_cachedRoutines);
     }
     _isInitialized = true;
+
+    // Garante que todas as rotinas ativas estejam agendadas no sistema operacional
+    for (final routine in _cachedRoutines) {
+      if (routine.isActive && !routine.isCurrentlySkipped) {
+        _scheduleRoutineAlarm(routine);
+      }
+    }
   }
 
   void _loadInitialRoutines() {
@@ -184,18 +191,9 @@ class LocalRoutineRepository implements RoutineRepository {
   void _scheduleRoutineAlarm(RoutineModel routine) {
     if (routine.id == null) return;
 
-    DateTime targetTime;
-    final now = DateTime.now();
-
-    if (routine.type == RoutineType.punctual && routine.punctualDate != null) {
-      targetTime = DateTime(
-        routine.punctualDate!.year,
-        routine.punctualDate!.month,
-        routine.punctualDate!.day,
-        routine.hour,
-        routine.minute,
-      );
-    } else {
+    DateTime? targetTime = routine.nextOccurrence;
+    if (targetTime == null) {
+      final now = DateTime.now();
       targetTime = DateTime(now.year, now.month, now.day, routine.hour, routine.minute);
       if (targetTime.isBefore(now)) {
         targetTime = targetTime.add(const Duration(days: 1));

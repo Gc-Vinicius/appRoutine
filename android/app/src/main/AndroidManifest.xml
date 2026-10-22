@@ -28,7 +28,9 @@
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true">
 
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
@@ -58,7 +60,10 @@
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
 
-        <!-- Receivers para agendamentos nativos via flutter_local_notifications -->
+        <!-- Receivers para agendamentos nativos e ações via flutter_local_notifications -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
+            android:exported="false" />
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
             android:exported="false" />

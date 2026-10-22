@@ -1,7 +1,6 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/widgets.dart';
 import 'notification_service.dart';
-import 'local_storage_service.dart';
 import '../../features/routine/domain/routine_model.dart';
 
 /// Top-level callback executado pelo AlarmManager quando o celular acorda do Doze Mode
@@ -10,25 +9,20 @@ void alarmDispatchCallback(int id) async {
   debugPrint('[AlarmManager] Callback disparado para o ID: $id');
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Buscar dados reais da rotina persistida
-  final routines = await LocalStorageService.loadRoutines();
-  RoutineModel? matched;
-  if (routines != null) {
-    try {
-      matched = routines.firstWhere((r) => r.id == id);
-    } catch (_) {}
+  try {
+    final notifService = NotificationService();
+    await notifService.initialize();
+    await notifService.showNotification(
+      id: id,
+      title: 'Hora da Rotina!',
+      body: 'Alarme disparado no seu horário programado.',
+    );
+  } catch (e) {
+    debugPrint('[AlarmManager] Erro no callback de background: $e');
   }
-
-  final notifService = NotificationService();
-  await notifService.initialize();
-  await notifService.showNotification(
-    id: id,
-    title: matched?.title ?? 'Hora da Rotina!',
-    body: matched?.body ?? 'Alarme pontual disparado no segundo exato.',
-  );
 }
 
-/// Serviço de agendamento exato utilizando o android_alarm_manager_plus (RNF02)
+/// Serviço de agendamento com redundância nativa (RNF02)
 class AlarmSchedulerService {
   static final AlarmSchedulerService _instance = AlarmSchedulerService._internal();
   factory AlarmSchedulerService() => _instance;
@@ -51,19 +45,26 @@ class AlarmSchedulerService {
     try {
       if (routine.id == null) return false;
 
-      // 1. Agendamento nativo via flutter_local_notifications (AlarmManager nativo com exactAllowWhileIdle)
+      // 1. Agendamento nativo via flutter_local_notifications (AlarmManager nativo com exactAllowWhileIdle/inexact)
       await NotificationService().scheduleRoutineNotification(routine);
 
       // 2. Agendamento redundante via android_alarm_manager_plus
-      return await AndroidAlarmManager.oneShotAt(
-        targetTime,
-        routine.id!,
-        alarmDispatchCallback,
-        exact: true,
-        wakeup: true,
-        allowWhileIdle: true,
-        rescheduleOnReboot: true,
-      );
+      final canExact = await NotificationService().canScheduleExact();
+      try {
+        await AndroidAlarmManager.oneShotAt(
+          targetTime,
+          routine.id!,
+          alarmDispatchCallback,
+          exact: canExact,
+          wakeup: true,
+          allowWhileIdle: true,
+          rescheduleOnReboot: true,
+        );
+      } catch (e) {
+        debugPrint('[AlarmManager] oneShotAt ignorado ou com erro: $e');
+      }
+
+      return true;
     } catch (e) {
       debugPrint('[AlarmManager] Falha ao agendar alarme: $e');
       return false;
