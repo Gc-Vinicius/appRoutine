@@ -21,14 +21,14 @@ dependencies:
   path: ^1.9.0
 
   # Agendamento em Segundo Plano e Despertador Preciso (Doze Mode)
-  android_alarm_manager_plus: ^4.0.7
+  android_alarm_manager_plus: ^5.0.0
 
   # Notificações Locais de Alta Prioridade para Interceptação BLE
   flutter_local_notifications: ^17.2.1
 
   # Permissões do Android (SCHEDULE_EXACT_ALARM, POST_NOTIFICATIONS, BATERIA)
   permission_handler: ^11.3.1
-  android_intent_plus: ^4.0.3
+  android_intent_plus: ^5.0.0
   device_info_plus: ^10.1.0
 
   # Fusos Horários e Formatação
