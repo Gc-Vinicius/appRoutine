@@ -19,6 +19,23 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+subprojects {
+    afterEvaluate {
+        if (project.hasProperty("android")) {
+            val android = project.property("android")
+            try {
+                val method = android?.javaClass?.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)
+                method?.invoke(android, 34)
+            } catch (_: Throwable) {
+                try {
+                    val method = android?.javaClass?.getMethod("compileSdkVersion", String::class.java)
+                    method?.invoke(android, "android-34")
+                } catch (_: Throwable) {}
+            }
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }

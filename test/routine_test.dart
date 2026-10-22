@@ -77,13 +77,13 @@ void main() {
     });
 
     test('All 3 palettes have matching 5 official swatches from cores.md', () {
-      final carmim = AppPalettes.carmimPergaminho;
+      const carmim = AppPalettes.carmimPergaminho;
       expect(carmim.swatchesHex, equals(['#262525', '#525252', '#E6DDBC', '#822626', '#690202']));
 
-      final taiga = AppPalettes.taigaNordica;
+      const taiga = AppPalettes.taigaNordica;
       expect(taiga.swatchesHex, equals(['#232226', '#253342', '#3E5954', '#5E9188', '#FFFFFF']));
 
-      final brisa = AppPalettes.brisaCosteira;
+      const brisa = AppPalettes.brisaCosteira;
       expect(brisa.swatchesHex, equals(['#EBE7E0', '#FFFFFF', '#44749D', '#C6D4E1', '#BDB8AD']));
     });
   });
