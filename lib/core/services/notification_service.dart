@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -13,6 +14,9 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
+
+  AndroidFlutterLocalNotificationsPlugin? get androidPlugin =>
+      _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -53,6 +57,44 @@ class NotificationService {
     _isInitialized = true;
   }
 
+  /// Checa se o sistema operacional autorizou agendamento de alarmes exatos
+  Future<bool> canScheduleExact() async {
+    try {
+      final plugin = androidPlugin;
+      if (plugin == null) return false;
+      return await plugin.canScheduleExactNotifications() ?? false;
+    } catch (e) {
+      debugPrint('[NotificationService] canScheduleExact: $e');
+      return false;
+    }
+  }
+
+  /// Redireciona para o painel nativo do Android para ativar 'Alarmes e Lembretes'
+  Future<void> requestExactAlarmPermission() async {
+    try {
+      final plugin = androidPlugin;
+      if (plugin != null) {
+        await plugin.requestExactAlarmsPermission();
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] requestExactAlarmPermission: $e');
+    }
+  }
+
+  /// Solicita permissão de notificações nativas (Android 13+)
+  Future<bool> requestNotificationPermission() async {
+    try {
+      final plugin = androidPlugin;
+      if (plugin != null) {
+        final granted = await plugin.requestNotificationsPermission();
+        return granted ?? false;
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] requestNotificationPermission: $e');
+    }
+    return false;
+  }
+
   /// Cria o canal nativo de Alta Prioridade com som e vibração habilitados (RNF06)
   Future<void> _createHighPriorityChannel() async {
     const androidChannel = AndroidNotificationChannel(
@@ -65,9 +107,7 @@ class NotificationService {
       showBadge: true,
     );
 
-    await _notificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(androidChannel);
+    await androidPlugin?.createNotificationChannel(androidChannel);
   }
 
   NotificationDetails _buildNotificationDetails(String title, {bool allowSnooze = true}) {
@@ -89,7 +129,7 @@ class NotificationService {
                 const AndroidNotificationAction(
                   'action_snooze_10',
                   'Soneca (+10m)',
-                  showsUserInterface: false,
+                  showsUserInterface: true,
                   cancelNotification: true,
                 ),
               ]
@@ -106,14 +146,19 @@ class NotificationService {
     int minutes = 10,
   }) async {
     await initialize();
+    final canExact = await canScheduleExact();
+    final scheduleMode = canExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
     final snoozeTime = tz.TZDateTime.now(tz.local).add(Duration(minutes: minutes));
     await _notificationsPlugin.zonedSchedule(
-      id + 500000, // ID deslocado para a soneca
+      id + 500000,
       '[Soneca] $title',
       body,
       snoozeTime,
       _buildNotificationDetails(title, allowSnooze: false),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: scheduleMode,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
@@ -133,7 +178,7 @@ class NotificationService {
     );
   }
 
-  /// Agenda alarme nativo com exactAllowWhileIdle no sistema operacional
+  /// Agenda alarme nativo com exactAllowWhileIdle (ou fallback inexactAllowWhileIdle)
   Future<void> scheduleRoutineNotification(RoutineModel routine) async {
     if (routine.id == null || !routine.isActive) return;
     await initialize();
@@ -141,72 +186,113 @@ class NotificationService {
     final now = DateTime.now();
     final details = _buildNotificationDetails(routine.title);
 
+    final canExact = await canScheduleExact();
+    final scheduleMode = canExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
     // Limpar agendamentos anteriores do mesmo ID
     await cancelRoutine(routine.id!);
 
-    if (routine.type == RoutineType.punctual) {
-      DateTime target = routine.punctualDate ?? DateTime(now.year, now.month, now.day, routine.hour, routine.minute);
-      target = DateTime(target.year, target.month, target.day, routine.hour, routine.minute);
+    try {
+      if (routine.type == RoutineType.punctual) {
+        DateTime target = routine.punctualDate ?? DateTime(now.year, now.month, now.day, routine.hour, routine.minute);
+        target = DateTime(target.year, target.month, target.day, routine.hour, routine.minute);
 
-      // Se o horário especificado hoje já passou, não agenda no passado
-      if (target.isAfter(now)) {
-        final tzTarget = tz.TZDateTime.from(target, tz.local);
-        await _notificationsPlugin.zonedSchedule(
-          routine.id!,
-          routine.title,
-          routine.body,
-          tzTarget,
-          details,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        );
-      }
-    } else if (routine.type == RoutineType.recurring) {
-      if (routine.weekdays.isEmpty) return;
-
-      for (final weekday in routine.weekdays) {
-        final subId = (routine.id! * 10) + weekday;
-        final target = _nextInstanceOfDay(weekday, routine.hour, routine.minute);
-        final tzTarget = tz.TZDateTime.from(target, tz.local);
-
-        await _notificationsPlugin.zonedSchedule(
-          subId,
-          routine.title,
-          routine.body,
-          tzTarget,
-          details,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-        );
-      }
-    } else if (routine.type == RoutineType.periodic) {
-      final interval = routine.intervalMinutes ?? 120;
-      final startH = routine.windowStartHour ?? 8;
-      final endH = routine.windowEndHour ?? 20;
-      final stepHours = (interval ~/ 60).clamp(1, 24);
-
-      int slot = 0;
-      for (int h = startH; h <= endH; h += stepHours) {
-        final subId = (routine.id! * 100) + slot;
-        slot++;
-
-        DateTime target = DateTime(now.year, now.month, now.day, h, routine.minute);
-        if (target.isBefore(now)) {
-          target = target.add(const Duration(days: 1));
+        if (target.isAfter(now)) {
+          final tzTarget = tz.TZDateTime.from(target, tz.local);
+          await _notificationsPlugin.zonedSchedule(
+            routine.id!,
+            routine.title,
+            routine.body,
+            tzTarget,
+            details,
+            androidScheduleMode: scheduleMode,
+            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          );
         }
+      } else if (routine.type == RoutineType.recurring) {
+        if (routine.weekdays.isEmpty) return;
 
-        final tzTarget = tz.TZDateTime.from(target, tz.local);
-        await _notificationsPlugin.zonedSchedule(
-          subId,
-          routine.title,
-          routine.body,
-          tzTarget,
-          details,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-          matchDateTimeComponents: DateTimeComponents.time,
-        );
+        for (final weekday in routine.weekdays) {
+          final subId = (routine.id! * 10) + weekday;
+          final target = _nextInstanceOfDay(weekday, routine.hour, routine.minute);
+          final tzTarget = tz.TZDateTime.from(target, tz.local);
+
+          await _notificationsPlugin.zonedSchedule(
+            subId,
+            routine.title,
+            routine.body,
+            tzTarget,
+            details,
+            androidScheduleMode: scheduleMode,
+            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+            matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+          );
+        }
+      } else if (routine.type == RoutineType.periodic) {
+        final interval = routine.intervalMinutes ?? 120;
+        final startH = routine.windowStartHour ?? 8;
+        final endH = routine.windowEndHour ?? 20;
+        final stepHours = (interval ~/ 60).clamp(1, 24);
+
+        int slot = 0;
+        for (int h = startH; h <= endH; h += stepHours) {
+          final subId = (routine.id! * 100) + slot;
+          slot++;
+
+          DateTime target = DateTime(now.year, now.month, now.day, h, routine.minute);
+          if (target.isBefore(now)) {
+            target = target.add(const Duration(days: 1));
+          }
+
+          final tzTarget = tz.TZDateTime.from(target, tz.local);
+          await _notificationsPlugin.zonedSchedule(
+            subId,
+            routine.title,
+            routine.body,
+            tzTarget,
+            details,
+            androidScheduleMode: scheduleMode,
+            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+            matchDateTimeComponents: DateTimeComponents.time,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] Falha no agendamento: $e. Tentando fallback...');
+      if (canExact) {
+        try {
+          if (routine.type == RoutineType.punctual) {
+            final target = routine.punctualDate ?? DateTime(now.year, now.month, now.day, routine.hour, routine.minute);
+            if (target.isAfter(now)) {
+              await _notificationsPlugin.zonedSchedule(
+                routine.id!,
+                routine.title,
+                routine.body,
+                tz.TZDateTime.from(target, tz.local),
+                details,
+                androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+                uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+              );
+            }
+          } else if (routine.type == RoutineType.recurring) {
+            for (final weekday in routine.weekdays) {
+              final subId = (routine.id! * 10) + weekday;
+              final target = _nextInstanceOfDay(weekday, routine.hour, routine.minute);
+              await _notificationsPlugin.zonedSchedule(
+                subId,
+                routine.title,
+                routine.body,
+                tz.TZDateTime.from(target, tz.local),
+                details,
+                androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+                uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+                matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+              );
+            }
+          }
+        } catch (_) {}
       }
     }
   }
@@ -230,6 +316,27 @@ class NotificationService {
     for (int slot = 0; slot < 24; slot++) {
       await _notificationsPlugin.cancel((id * 100) + slot);
     }
+  }
+
+  /// Dispara alarme de teste agendado (ex: daqui a 10 segundos) com tela bloqueada
+  Future<void> testScheduledNotificationInSeconds({int seconds = 10}) async {
+    await initialize();
+    final canExact = await canScheduleExact();
+    final scheduleMode = canExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
+    final targetTime = tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds));
+
+    await _notificationsPlugin.zonedSchedule(
+      888888,
+      '⏰ Teste Agendado (10s)!',
+      'O sistema operacional acordou e disparou no seu pulso!',
+      targetTime,
+      _buildNotificationDetails('Teste Agendado', allowSnooze: false),
+      androidScheduleMode: scheduleMode,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+    );
   }
 
   /// Dispara notificação de teste imediato para validar no smartwatch Haylou Solar Neo

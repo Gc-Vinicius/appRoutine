@@ -24,11 +24,11 @@ void alarmDispatchCallback(int id) async {
   await notifService.showNotification(
     id: id,
     title: matched?.title ?? 'Hora da Rotina!',
-    body: matched?.body ?? 'Alarme pontual disparado no segundo exato.',
+    body: matched?.body ?? 'Alarme disparado no seu horário programado.',
   );
 }
 
-/// Serviço de agendamento exato utilizando o android_alarm_manager_plus (RNF02)
+/// Serviço de agendamento com redundância nativa (RNF02)
 class AlarmSchedulerService {
   static final AlarmSchedulerService _instance = AlarmSchedulerService._internal();
   factory AlarmSchedulerService() => _instance;
@@ -51,19 +51,26 @@ class AlarmSchedulerService {
     try {
       if (routine.id == null) return false;
 
-      // 1. Agendamento nativo via flutter_local_notifications (AlarmManager nativo com exactAllowWhileIdle)
+      // 1. Agendamento nativo via flutter_local_notifications (AlarmManager nativo com exactAllowWhileIdle/inexact)
       await NotificationService().scheduleRoutineNotification(routine);
 
       // 2. Agendamento redundante via android_alarm_manager_plus
-      return await AndroidAlarmManager.oneShotAt(
-        targetTime,
-        routine.id!,
-        alarmDispatchCallback,
-        exact: true,
-        wakeup: true,
-        allowWhileIdle: true,
-        rescheduleOnReboot: true,
-      );
+      final canExact = await NotificationService().canScheduleExact();
+      try {
+        await AndroidAlarmManager.oneShotAt(
+          targetTime,
+          routine.id!,
+          alarmDispatchCallback,
+          exact: canExact,
+          wakeup: true,
+          allowWhileIdle: true,
+          rescheduleOnReboot: true,
+        );
+      } catch (e) {
+        debugPrint('[AlarmManager] oneShotAt ignorado ou com erro: $e');
+      }
+
+      return true;
     } catch (e) {
       debugPrint('[AlarmManager] Falha ao agendar alarme: $e');
       return false;

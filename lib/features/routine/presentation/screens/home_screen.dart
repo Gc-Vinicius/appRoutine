@@ -8,6 +8,7 @@ import 'diagnostic_screen.dart';
 import 'sleep_calculator_screen.dart';
 import 'theme_selector_screen.dart';
 import 'timer_stopwatch_screen.dart';
+import '../../../../core/services/permission_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
 
@@ -18,8 +19,34 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   int _currentNavIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final perms = await PermissionService().checkAllPermissions();
+      if (!perms.hasNotification) {
+        await PermissionService().requestNotificationPermission();
+      }
+      ref.invalidate(permissionsProvider);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(permissionsProvider);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,13 +157,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildRoutinesTab(
-    dynamic palette,
+    AppPaletteData palette,
     List<dynamic> routines,
     String activeFilter,
   ) {
+    final permAsync = ref.watch(permissionsProvider);
+    final needsAttention = permAsync.value != null &&
+        (!permAsync.value!.hasNotification || !permAsync.value!.hasExactAlarm);
+
     return Column(
       children: [
-        // Widget de Relógio Ao Vivo (Analógico + Digital) solicitado na Imagem 2
+        if (needsAttention)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.alarm_off, color: Colors.amber, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Permissões de Alarme Necessárias',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: palette.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Ative para garantir que os alarmes toquem no horário exato.',
+                        style: TextStyle(fontSize: 10.5, color: palette.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DiagnosticScreen()),
+                    ).then((_) => ref.invalidate(permissionsProvider));
+                  },
+                  child: Text(
+                    'Ativar',
+                    style: TextStyle(
+                      color: palette.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Widget de Relógio Ao Vivo (Analógico + Digital)
         const LiveClockWidget(),
 
         // Filtros Rápidos (Tabs)
