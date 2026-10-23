@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/routine_repository.dart';
+import '../../domain/alarm_settings_model.dart';
 import '../../domain/category_item.dart';
 import '../../domain/routine_model.dart';
 import '../../../../core/services/local_storage_service.dart';
@@ -86,6 +87,45 @@ class CategoryListNotifier extends StateNotifier<List<CategoryItem>> {
 
 final categoryListProvider = StateNotifierProvider<CategoryListNotifier, List<CategoryItem>>((ref) {
   return CategoryListNotifier();
+});
+
+// Provedor de Configurações de Despertar e Soneca
+class AlarmSettingsNotifier extends StateNotifier<AlarmSettingsModel> {
+  AlarmSettingsNotifier() : super(const AlarmSettingsModel()) {
+    loadSettings();
+  }
+
+  Future<void> loadSettings() async {
+    final settings = await LocalStorageService.loadAlarmSettings();
+    state = settings;
+  }
+
+  Future<void> updateSnoozeDuration(int minutes) async {
+    final updated = state.copyWith(snoozeDurationMinutes: minutes);
+    state = updated;
+    await LocalStorageService.saveAlarmSettings(updated);
+  }
+
+  Future<void> updateMaxSnoozeCount(int count) async {
+    final updated = state.copyWith(maxSnoozeCount: count);
+    state = updated;
+    await LocalStorageService.saveAlarmSettings(updated);
+  }
+
+  Future<void> toggleCrescendoVolume(bool enabled) async {
+    final updated = state.copyWith(crescendoVolume: enabled);
+    state = updated;
+    await LocalStorageService.saveAlarmSettings(updated);
+  }
+
+  Future<void> updateSettings(AlarmSettingsModel settings) async {
+    state = settings;
+    await LocalStorageService.saveAlarmSettings(settings);
+  }
+}
+
+final alarmSettingsProvider = StateNotifierProvider<AlarmSettingsNotifier, AlarmSettingsModel>((ref) {
+  return AlarmSettingsNotifier();
 });
 
 // Filtro de Tabs na Home

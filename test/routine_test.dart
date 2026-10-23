@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:app_routine/features/routine/domain/alarm_settings_model.dart';
 import 'package:app_routine/features/routine/domain/category_item.dart';
 import 'package:app_routine/features/routine/domain/routine_model.dart';
 import 'package:app_routine/features/routine/domain/timer_preset_item.dart';
@@ -184,4 +185,32 @@ void main() {
       }
     });
   });
+
+  group('AlarmSettingsModel Tests', () {
+    test('AlarmSettingsModel default values', () {
+      const settings = AlarmSettingsModel();
+      expect(settings.snoozeDurationMinutes, equals(10));
+      expect(settings.maxSnoozeCount, equals(3));
+      expect(settings.crescendoVolume, isTrue);
+      expect(settings.crescendoDurationSeconds, equals(30));
+    });
+
+    test('AlarmSettingsModel copyWith and JSON serialization', () {
+      const settings = AlarmSettingsModel();
+      final updated = settings.copyWith(
+        snoozeDurationMinutes: 15,
+        maxSnoozeCount: 2,
+        crescendoVolume: false,
+      );
+
+      final json = updated.toJson();
+      final fromJson = AlarmSettingsModel.fromJson(json);
+
+      expect(fromJson.snoozeDurationMinutes, equals(15));
+      expect(fromJson.maxSnoozeCount, equals(2));
+      expect(fromJson.crescendoVolume, isFalse);
+      expect(fromJson.crescendoDurationSeconds, equals(30));
+    });
+  });
+
 }
