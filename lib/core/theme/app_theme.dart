@@ -13,7 +13,7 @@ class AppTheme {
             primary: palette.primary,
             secondary: palette.secondary,
             surface: palette.surface,
-            onPrimary: palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white,
+            onPrimary: palette.onPrimary,
             onSecondary: palette.textPrimary,
             onSurface: palette.textPrimary,
             outline: palette.border,
@@ -22,7 +22,7 @@ class AppTheme {
             primary: palette.primary,
             secondary: palette.secondary,
             surface: palette.surface,
-            onPrimary: Colors.white,
+            onPrimary: palette.onPrimary,
             onSecondary: palette.textPrimary,
             onSurface: palette.textPrimary,
             outline: palette.border,
@@ -66,7 +66,7 @@ class AppTheme {
       // Botão Flutuante (FAB)
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: palette.primary,
-        foregroundColor: (isDark && palette.id == 'carmim_pergaminho') ? palette.textPrimary : Colors.white,
+        foregroundColor: palette.onPrimary,
         elevation: 4,
         shape: const CircleBorder(),
       ),
@@ -75,7 +75,7 @@ class AppTheme {
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return (isDark && palette.id == 'carmim_pergaminho') ? palette.textPrimary : Colors.white;
+            return palette.onPrimary;
           }
           return palette.textMuted;
         }),
@@ -113,7 +113,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: palette.primary,
-          foregroundColor: (isDark && palette.id == 'carmim_pergaminho') ? palette.textPrimary : Colors.white,
+          foregroundColor: palette.onPrimary,
           minimumSize: const Size(64, 46),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -161,7 +161,7 @@ class AppTheme {
         todayForegroundColor: WidgetStateProperty.all(palette.primary),
         dayForegroundColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return (isDark && palette.id == 'carmim_pergaminho') ? palette.textPrimary : Colors.white;
+            return palette.onPrimary;
           }
           return palette.textPrimary;
         }),

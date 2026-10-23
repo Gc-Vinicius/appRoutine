@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/routine_repository.dart';
+import '../../domain/category_item.dart';
 import '../../domain/routine_model.dart';
+import '../../../../core/services/local_storage_service.dart';
 import '../../../../core/services/permission_service.dart';
 
 final routineRepositoryProvider = Provider<RoutineRepository>((ref) {
@@ -48,6 +50,42 @@ class RoutineListNotifier extends StateNotifier<List<RoutineModel>> {
 final routineListProvider = StateNotifierProvider<RoutineListNotifier, List<RoutineModel>>((ref) {
   final repo = ref.watch(routineRepositoryProvider);
   return RoutineListNotifier(repo);
+});
+
+// Provedor de Categorias Customizadas com Emojis
+class CategoryListNotifier extends StateNotifier<List<CategoryItem>> {
+  CategoryListNotifier() : super(CategoryItem.defaultCategories) {
+    loadCategories();
+  }
+
+  Future<void> loadCategories() async {
+    final list = await LocalStorageService.loadCategories();
+    state = list;
+  }
+
+  Future<void> addCategory(String name, String emoji) async {
+    final newCat = CategoryItem(
+      id: 'cat_${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      emoji: emoji.trim().isEmpty ? '🏷️' : emoji.trim(),
+      isDefault: false,
+    );
+    final updated = [...state, newCat];
+    state = updated;
+    await LocalStorageService.saveCategories(updated);
+  }
+
+  Future<void> addCustomCategory(String name, String emoji) => addCategory(name, emoji);
+
+  Future<void> deleteCategory(String id) async {
+    final updated = state.where((c) => c.id != id || c.isDefault).toList();
+    state = updated;
+    await LocalStorageService.saveCategories(updated);
+  }
+}
+
+final categoryListProvider = StateNotifierProvider<CategoryListNotifier, List<CategoryItem>>((ref) {
+  return CategoryListNotifier();
 });
 
 // Filtro de Tabs na Home

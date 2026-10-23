@@ -8,7 +8,9 @@ import '../../../../core/services/permission_service.dart';
 import '../../../../core/theme/theme_provider.dart';
 
 class DiagnosticScreen extends ConsumerWidget {
-  const DiagnosticScreen({super.key});
+  final bool isEmbedded;
+
+  const DiagnosticScreen({super.key, this.isEmbedded = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,6 +20,7 @@ class DiagnosticScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configurações'),
+        automaticallyImplyLeading: !isEmbedded,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -43,7 +46,7 @@ class DiagnosticScreen extends ConsumerWidget {
                     ),
                     child: Icon(
                       Icons.check,
-                      color: palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white,
+                      color: palette.onPrimary,
                       size: 26,
                     ),
                   ),

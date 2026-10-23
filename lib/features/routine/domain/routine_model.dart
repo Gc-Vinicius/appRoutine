@@ -55,6 +55,8 @@ class RoutineModel {
   final String body;
   final RoutineType type;
   final RoutineCategory category;
+  final String? customCategoryName;
+  final String? customCategoryEmoji;
   final int hour;
   final int minute;
   final List<int> weekdays; // 1 = Seg, 2 = Ter ... 7 = Dom
@@ -72,6 +74,8 @@ class RoutineModel {
     required this.body,
     required this.type,
     this.category = RoutineCategory.general,
+    this.customCategoryName,
+    this.customCategoryEmoji,
     required this.hour,
     required this.minute,
     this.weekdays = const [],
@@ -84,12 +88,18 @@ class RoutineModel {
     required this.createdAt,
   });
 
+  String get displayCategoryName => customCategoryName ?? category.label;
+  String get displayCategoryEmoji => customCategoryEmoji ?? category.emoji;
+
   RoutineModel copyWith({
     int? id,
     String? title,
     String? body,
     RoutineType? type,
     RoutineCategory? category,
+    String? customCategoryName,
+    String? customCategoryEmoji,
+    bool clearCustomCategory = false,
     int? hour,
     int? minute,
     List<int>? weekdays,
@@ -107,6 +117,12 @@ class RoutineModel {
       body: body ?? this.body,
       type: type ?? this.type,
       category: category ?? this.category,
+      customCategoryName: clearCustomCategory
+          ? null
+          : (customCategoryName ?? this.customCategoryName),
+      customCategoryEmoji: clearCustomCategory
+          ? null
+          : (customCategoryEmoji ?? this.customCategoryEmoji),
       hour: hour ?? this.hour,
       minute: minute ?? this.minute,
       weekdays: weekdays ?? this.weekdays,
@@ -127,6 +143,8 @@ class RoutineModel {
       'body': body,
       'type': type.name,
       'category': category.name,
+      'customCategoryName': customCategoryName,
+      'customCategoryEmoji': customCategoryEmoji,
       'hour': hour,
       'minute': minute,
       'weekdays': weekdays,
@@ -153,6 +171,8 @@ class RoutineModel {
         (c) => c.name == json['category'],
         orElse: () => RoutineCategory.general,
       ),
+      customCategoryName: json['customCategoryName'] as String?,
+      customCategoryEmoji: json['customCategoryEmoji'] as String?,
       hour: json['hour'] as int,
       minute: json['minute'] as int,
       weekdays: (json['weekdays'] as List<dynamic>?)?.map((e) => e as int).toList() ?? const [],

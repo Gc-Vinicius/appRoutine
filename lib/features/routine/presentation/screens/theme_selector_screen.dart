@@ -5,34 +5,33 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
 
 class ThemeSelectorScreen extends ConsumerWidget {
-  const ThemeSelectorScreen({super.key});
+  final bool isEmbedded;
+
+  const ThemeSelectorScreen({super.key, this.isEmbedded = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Escuta reativamente a paleta atual
     final activePalette = ref.watch(currentPaletteProvider);
-
-    final allThemes = [
-      AppPalettes.carmimPergaminho,
-      AppPalettes.taigaNordica,
-      AppPalettes.brisaCosteira,
-    ];
+    const allThemes = AppPalettes.allPalettes;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Temas & Aparência'),
+        automaticallyImplyLeading: !isEmbedded,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Concluir',
-              style: TextStyle(
-                color: activePalette.primary,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
+          if (!isEmbedded && Navigator.canPop(context))
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Concluir',
+                style: TextStyle(
+                  color: activePalette.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
               ),
             ),
-          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -42,12 +41,12 @@ class ThemeSelectorScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Escolha a identidade visual do aplicativo. As 3 opções possuem contraste otimizado para o display do Haylou Solar Neo.',
+              'Escolha a identidade visual do aplicativo. São 10 paletas oficiais inspiradas no "cores.md" com contraste calibrado.',
               style: TextStyle(fontSize: 11.5, color: activePalette.textMuted),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // Lista dos 3 Temas
+            // Lista dos 10 Temas
             for (final pal in allThemes)
               ThemeCard(
                 palette: pal,
@@ -65,18 +64,20 @@ class ThemeSelectorScreen extends ConsumerWidget {
               ),
 
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Confirmar e Aplicar Tema'),
-            ),
-            const SizedBox(height: 16),
+            if (!isEmbedded && Navigator.canPop(context)) ...[
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Confirmar e Concluir'),
+              ),
+              const SizedBox(height: 16),
+            ],
             Center(
               child: Text(
                 'A preferência de tema é persistida localmente (RF07).',
                 style: TextStyle(fontSize: 10, color: activePalette.textMuted),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
           ],
         ),
       ),

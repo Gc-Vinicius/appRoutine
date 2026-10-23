@@ -197,7 +197,7 @@ class _SleepCalculatorScreenState extends ConsumerState<SleepCalculatorScreen> {
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: _modeIndex == 0
-                                ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
+                                ? palette.onPrimary
                                 : palette.textMuted,
                           ),
                         ),
@@ -220,7 +220,7 @@ class _SleepCalculatorScreenState extends ConsumerState<SleepCalculatorScreen> {
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: _modeIndex == 1
-                                ? (palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white)
+                                ? palette.onPrimary
                                 : palette.textMuted,
                           ),
                         ),

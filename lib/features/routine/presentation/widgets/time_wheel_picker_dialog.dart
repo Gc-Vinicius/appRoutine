@@ -261,7 +261,7 @@ class _TimeWheelPickerDialogState extends State<TimeWheelPickerDialog> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: palette.primary,
-                    foregroundColor: palette.id == 'carmim_pergaminho' ? palette.textPrimary : Colors.white,
+                    foregroundColor: palette.onPrimary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     minimumSize: const Size.fromHeight(48),
                   ),

@@ -10,6 +10,11 @@ void main() {
       ),
     );
 
-    expect(find.text('Rotinas & Hábitos'), findsOneWidget);
+    // Verifica abas da BottomNavigationBar
+    expect(find.text('Rotinas'), findsWidgets);
+    expect(find.text('Tempo'), findsOneWidget);
+    expect(find.text('Sono'), findsOneWidget);
+    expect(find.text('Temas'), findsOneWidget);
+    expect(find.text('Ajustes'), findsOneWidget);
   });
 }
