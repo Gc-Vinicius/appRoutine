@@ -1,3 +1,5 @@
+﻿import '../../../../core/providers/auth_provider.dart';
+import 'auth_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/routine_provider.dart';
@@ -28,6 +30,8 @@ class DiagnosticScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildCloudAccountCard(context, ref, palette),
+
             // Hero Status Card
             Container(
               padding: const EdgeInsets.all(16),
@@ -473,6 +477,199 @@ class DiagnosticScreen extends ConsumerWidget {
               ),
               child: const Text('Ativar', style: TextStyle(fontSize: 11)),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCloudAccountCard(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic palette,
+  ) {
+    final user = ref.watch(currentUserProvider);
+    final profileAsync = ref.watch(userProfileProvider);
+    final syncState = ref.watch(syncProvider);
+
+    if (user == null) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: palette.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: palette.primary.withValues(alpha: 0.12),
+              ),
+              child: Icon(
+                Icons.cloud_outlined,
+                color: palette.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Backup na Nuvem (Supabase)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: palette.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Modo local ativo. Entre para sincronizar rotinas e hábitos.',
+                    style: TextStyle(fontSize: 11, color: palette.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AuthScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: palette.primary,
+                foregroundColor: palette.onPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('Entrar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final profile = profileAsync.value;
+    final displayName = profile?.nome ?? user.email ?? 'Usuário';
+    final photoUrl = profile?.fotoUrl;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: palette.border),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: palette.surfaceVariant,
+                backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                    ? NetworkImage(photoUrl)
+                    : null,
+                child: photoUrl == null || photoUrl.isEmpty
+                    ? Text(
+                        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: palette.primary,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: palette.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      user.email ?? '',
+                      style: TextStyle(fontSize: 11, color: palette.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Sincronizar dados agora',
+                icon: syncState.isSyncing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.sync, color: palette.primary),
+                onPressed: syncState.isSyncing
+                    ? null
+                    : () async {
+                        final res = await ref.read(syncProvider.notifier).triggerSync();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(res.message),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
+              ),
+              IconButton(
+                tooltip: 'Gerenciar Conta',
+                icon: Icon(Icons.settings_outlined, color: palette.textMuted),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AuthScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
+          if (syncState.lastSyncTime != null || syncState.lastMessage != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.cloud_done_outlined,
+                  size: 14,
+                  color: palette.primary.withValues(alpha: 0.8),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    syncState.lastSyncTime != null
+                        ? 'Sincronizado às ${syncState.lastSyncTime!.hour.toString().padLeft(2, '0')}:${syncState.lastSyncTime!.minute.toString().padLeft(2, '0')}'
+                        : (syncState.lastMessage ?? ''),
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: palette.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

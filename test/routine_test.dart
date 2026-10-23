@@ -1,3 +1,6 @@
+﻿import 'package:app_routine/core/config/supabase_config.dart';
+import 'package:app_routine/core/services/supabase_service.dart';
+import 'package:app_routine/core/services/supabase_sync_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app_routine/features/routine/domain/alarm_settings_model.dart';
@@ -317,4 +320,47 @@ void main() {
     });
   });
 
+  group('Supabase Integration & Models Tests', () {
+    test('UserProfile serialization and deserialization', () {
+      final profile = UserProfile.fromMap({
+        'id': 'usr-123',
+        'nome': 'João Silva',
+        'foto_url': 'https://example.com/avatar.jpg',
+      });
+
+      expect(profile.id, equals('usr-123'));
+      expect(profile.nome, equals('João Silva'));
+      expect(profile.fotoUrl, equals('https://example.com/avatar.jpg'));
+
+      final map = profile.toMap();
+      expect(map['id'], equals('usr-123'));
+      expect(map['nome'], equals('João Silva'));
+      expect(map['foto_url'], equals('https://example.com/avatar.jpg'));
+    });
+
+    test('UserProfile fallback when nome is missing', () {
+      final profile = UserProfile.fromMap({'id': 'usr-456'});
+      expect(profile.id, equals('usr-456'));
+      expect(profile.nome, equals('Usuário'));
+      expect(profile.fotoUrl, isNull);
+    });
+
+    test('SyncResult holds properties correctly', () {
+      const res = SyncResult(
+        success: true,
+        message: 'Sync concluído com sucesso',
+        routinesSynced: 5,
+        checkinsSynced: 12,
+      );
+      expect(res.success, isTrue);
+      expect(res.routinesSynced, equals(5));
+      expect(res.checkinsSynced, equals(12));
+    });
+
+    test('SupabaseConfig has valid defaults', () {
+      expect(SupabaseConfig.supabaseUrl, isNotEmpty);
+      expect(SupabaseConfig.supabasePublishableKey, isNotEmpty);
+      expect(SupabaseConfig.avatarsBucket, equals('avatars'));
+    });
+  });
 }

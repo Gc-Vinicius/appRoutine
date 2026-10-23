@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/services/alarm_scheduler_service.dart';
 import 'core/services/local_storage_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/supabase_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/routine/presentation/screens/home_screen.dart';
@@ -19,6 +20,9 @@ void main() async {
 
   final alarmScheduler = AlarmSchedulerService();
   await alarmScheduler.initialize();
+
+  // Inicializa o cliente Supabase de forma assíncrona e resiliente
+  await SupabaseService().initialize();
 
   // Carrega a preferência de tema salva em disco
   final savedPalette = await LocalStorageService.loadSavedTheme();
