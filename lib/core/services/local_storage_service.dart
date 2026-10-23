@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import '../theme/app_colors.dart';
+import '../../features/routine/domain/alarm_settings_model.dart';
 import '../../features/routine/domain/category_item.dart';
 import '../../features/routine/domain/routine_model.dart';
 import '../../features/routine/domain/timer_preset_item.dart';
@@ -13,6 +14,7 @@ class LocalStorageService {
   static const String _themeFileName = 'theme_preference.json';
   static const String _categoriesFileName = 'custom_categories.json';
   static const String _timerPresetsFileName = 'timer_presets.json';
+  static const String _alarmSettingsFileName = 'alarm_settings.json';
 
   static Future<File> _getFile(String fileName) async {
     final dir = await getApplicationDocumentsDirectory();
@@ -123,6 +125,35 @@ class LocalStorageService {
     }
   }
 
+  /// Carrega as configurações de alarme (soneca, volume crescente, repetições)
+  static Future<AlarmSettingsModel> loadAlarmSettings() async {
+    try {
+      final file = await _getFile(_alarmSettingsFileName);
+      if (!await file.exists()) {
+        return const AlarmSettingsModel();
+      }
+      final jsonString = await file.readAsString();
+      if (jsonString.trim().isEmpty) {
+        return const AlarmSettingsModel();
+      }
+      final Map<String, dynamic> data = jsonDecode(jsonString);
+      return AlarmSettingsModel.fromJson(data);
+    } catch (e) {
+      debugPrint('[LocalStorageService] Erro ao ler configurações de alarme: $e');
+      return const AlarmSettingsModel();
+    }
+  }
+
+  /// Salva as configurações de alarme
+  static Future<void> saveAlarmSettings(AlarmSettingsModel settings) async {
+    try {
+      final file = await _getFile(_alarmSettingsFileName);
+      await file.writeAsString(jsonEncode(settings.toJson()), flush: true);
+    } catch (e) {
+      debugPrint('[LocalStorageService] Erro ao salvar configurações de alarme: $e');
+    }
+  }
+
   /// Carrega o tema selecionado pelo usuário
   static Future<AppThemePalette> loadSavedTheme() async {
     try {
@@ -182,16 +213,18 @@ class LocalStorageService {
     final themeId = AppPalettes.getPalette(currentTheme).id;
     final categories = await loadCategories();
     final presets = await loadTimerPresets();
+    final alarmSettings = await loadAlarmSettings();
 
     final backupMap = {
       'app': 'appRoutine',
-      'version': '1.2.1',
+      'version': '1.3.0',
       'exportDate': DateTime.now().toIso8601String(),
       'themeId': themeId,
       'totalRoutines': routines.length,
       'routines': routines.map((r) => r.toJson()).toList(),
       'customCategories': categories.map((c) => c.toJson()).toList(),
       'timerPresets': presets.map((p) => p.toJson()).toList(),
+      'alarmSettings': alarmSettings.toJson(),
     };
 
     return const JsonEncoder.withIndent('  ').convert(backupMap);
@@ -250,6 +283,11 @@ class LocalStorageService {
         if (pres.isNotEmpty) {
           await saveTimerPresets(pres);
         }
+      }
+
+      if (decoded['alarmSettings'] is Map<String, dynamic>) {
+        final settings = AlarmSettingsModel.fromJson(decoded['alarmSettings'] as Map<String, dynamic>);
+        await saveAlarmSettings(settings);
       }
 
       return imported.length;

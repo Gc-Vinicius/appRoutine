@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/routine_provider.dart';
+import '../../domain/routine_model.dart';
+import 'alarm_ringing_screen.dart';
 import '../../../../core/services/local_storage_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/permission_service.dart';
@@ -16,6 +18,7 @@ class DiagnosticScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = ref.watch(currentPaletteProvider);
     final permAsync = ref.watch(permissionsProvider);
+    final alarmSettings = ref.watch(alarmSettingsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -69,6 +72,179 @@ class DiagnosticScreen extends ConsumerWidget {
                           style: TextStyle(fontSize: 11, color: palette.textMuted),
                         ),
                       ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // SEÇÃO: EXPERIÊNCIA DE DESPERTAR & SONECA (MOBILE)
+            Text(
+              'EXPERIÊNCIA DE DESPERTAR & SONECA (MOBILE)',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: palette.textMuted,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: palette.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Switch Volume Crescente (Fade-in 30s)
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Volume Crescente (Fade-in)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: palette.textPrimary,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Inicia suave no volume mínimo e aumenta gradualmente ao longo de 30 segundos até o volume máximo.',
+                      style: TextStyle(fontSize: 11, color: palette.textSecondary),
+                    ),
+                    value: alarmSettings.crescendoVolume,
+                    activeTrackColor: palette.primary,
+                    onChanged: (val) {
+                      ref.read(alarmSettingsProvider.notifier).toggleCrescendoVolume(val);
+                    },
+                  ),
+                  Divider(color: palette.border, height: 24),
+
+                  // Duração da Soneca
+                  Text(
+                    'Duração da Soneca (Snooze)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: palette.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tempo até o alarme disparar novamente após pressionar o botão de adiar.',
+                    style: TextStyle(fontSize: 11, color: palette.textSecondary),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [5, 10, 15].map((mins) {
+                      final isSelected = alarmSettings.snoozeDurationMinutes == mins;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: ChoiceChip(
+                          label: Text('$mins min${mins == 10 ? ' (Padrão)' : ''}'),
+                          selected: isSelected,
+                          onSelected: (_) {
+                            ref.read(alarmSettingsProvider.notifier).updateSnoozeDuration(mins);
+                          },
+                          selectedColor: palette.primary,
+                          labelStyle: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? palette.onPrimary : palette.textPrimary,
+                          ),
+                          backgroundColor: palette.surfaceVariant,
+                          side: BorderSide(
+                            color: isSelected ? palette.primary : palette.border,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  Divider(color: palette.border, height: 24),
+
+                  // Limite de Sonecas
+                  Text(
+                    'Limite Máximo de Sonecas',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: palette.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Impede atrasos limitando quantas vezes o alarme pode ser adiado consecutivamente.',
+                    style: TextStyle(fontSize: 11, color: palette.textSecondary),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [1, 2, 3, 5].map((count) {
+                      final isSelected = alarmSettings.maxSnoozeCount == count;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: ChoiceChip(
+                          label: Text('${count}x${count == 3 ? ' (Padrão)' : ''}'),
+                          selected: isSelected,
+                          onSelected: (_) {
+                            ref.read(alarmSettingsProvider.notifier).updateMaxSnoozeCount(count);
+                          },
+                          selectedColor: palette.primary,
+                          labelStyle: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? palette.onPrimary : palette.textPrimary,
+                          ),
+                          backgroundColor: palette.surfaceVariant,
+                          side: BorderSide(
+                            color: isSelected ? palette.primary : palette.border,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Botão Testar Tela Cheia de Alarme Tocando
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AlarmRingingScreen(
+                              routine: RoutineModel(
+                                id: 99999,
+                                title: 'Despertar Matinal ☀️',
+                                body: 'Hora de levantar e iniciar o seu dia com foco e energia!',
+                                type: RoutineType.recurring,
+                                category: RoutineCategory.general,
+                                customCategoryName: 'Manhã',
+                                customCategoryEmoji: '🌅',
+                                hour: DateTime.now().hour,
+                                minute: DateTime.now().minute,
+                                weekdays: [1, 2, 3, 4, 5],
+                                isActive: true,
+                                createdAt: DateTime.now(),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: palette.primary),
+                        foregroundColor: palette.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const Icon(Icons.fullscreen_rounded, size: 20),
+                      label: const Text(
+                        'Testar Tela Cheia de Alarme Tocando',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -272,7 +448,7 @@ class DiagnosticScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: OutlinedButton.icon(
+                        child: ElevatedButton.icon(
                           onPressed: () => _importBackupDialog(context, ref, palette),
                           icon: const Icon(Icons.file_download_outlined, size: 18),
                           label: const Text('Restaurar Backup'),
@@ -283,7 +459,7 @@ class DiagnosticScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -298,15 +474,24 @@ class DiagnosticScreen extends ConsumerWidget {
     required VoidCallback onRequest,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: palette.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: palette.border),
+        border: Border.all(
+          color: isGranted ? Colors.green.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.4),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
+          Icon(
+            isGranted ? Icons.check_circle : Icons.warning_amber_rounded,
+            color: isGranted ? Colors.green : Colors.orangeAccent,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,7 +504,7 @@ class DiagnosticScreen extends ConsumerWidget {
                     color: palette.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   desc,
                   style: TextStyle(fontSize: 10.5, color: palette.textMuted),
@@ -327,25 +512,16 @@ class DiagnosticScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: onRequest,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: isGranted ? palette.badgeBg : palette.surfaceVariant,
-                borderRadius: BorderRadius.circular(6),
+          const SizedBox(width: 8),
+          if (!isGranted)
+            ElevatedButton(
+              onPressed: onRequest,
+              style: ElevatedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
               ),
-              child: Text(
-                isGranted ? 'ATIVO ✓' : 'CONCEDER',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: isGranted ? palette.badgeText : palette.primary,
-                ),
-              ),
+              child: const Text('Ativar', style: TextStyle(fontSize: 11)),
             ),
-          ),
         ],
       ),
     );

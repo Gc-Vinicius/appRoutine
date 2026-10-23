@@ -7,6 +7,9 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/routine/presentation/screens/home_screen.dart';
 
+/// Chave de navegação global para permitir transição à tela cheia de alarme a partir de notificações nativas
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -38,6 +41,7 @@ class AppRoutine extends ConsumerWidget {
     final currentPalette = ref.watch(themeProvider);
 
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'Alarmes & Rotinas',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.buildTheme(currentPalette),

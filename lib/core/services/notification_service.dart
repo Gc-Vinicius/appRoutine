@@ -1,10 +1,13 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../constants/app_constants.dart';
+import 'local_storage_service.dart';
+import '../../main.dart';
 import '../../features/routine/domain/routine_model.dart';
+import '../../features/routine/presentation/screens/alarm_ringing_screen.dart';
 
 /// Serviço responsável por emitir notificações locais nativas com canal de alta prioridade.
 /// O app ponte do smartwatch (Haylou Fun) intercepta estas notificações e as repassa ao pulso via BLE.
@@ -39,15 +42,50 @@ class NotificationService {
     await _notificationsPlugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (response) async {
-        if (response.actionId == 'action_snooze_10') {
+        if (response.actionId == 'action_snooze' || response.actionId == 'action_snooze_10') {
           final id = response.id ?? 9999;
           final title = response.payload ?? 'Lembrete em Soneca';
+          final settings = await LocalStorageService.loadAlarmSettings();
           await snoozeRoutine(
             id: id,
             title: title,
-            body: 'Soneca ativada (+10 minutos)',
-            minutes: 10,
+            body: 'Soneca ativada (+${settings.snoozeDurationMinutes} minutos)',
+            minutes: settings.snoozeDurationMinutes,
           );
+        } else {
+          // Usuário tocou na notificação principal: abrir AlarmRingingScreen
+          final nav = appNavigatorKey.currentState;
+          if (nav != null) {
+            final routines = await LocalStorageService.loadRoutines();
+            RoutineModel? target;
+            if (routines != null && response.id != null) {
+              try {
+                target = routines.firstWhere(
+                  (r) =>
+                      r.id == response.id ||
+                      (r.id != null &&
+                          (response.id! ~/ 10 == r.id ||
+                              response.id! ~/ 100 == r.id)),
+                );
+              } catch (_) {}
+            }
+            target ??= RoutineModel(
+              id: response.id ?? 9999,
+              title: response.payload ?? 'Hora da Rotina!',
+              body: 'Alarme disparado no seu celular e relógio.',
+              type: RoutineType.recurring,
+              category: RoutineCategory.general,
+              hour: DateTime.now().hour,
+              minute: DateTime.now().minute,
+              isActive: true,
+              createdAt: DateTime.now(),
+            );
+            nav.push(
+              MaterialPageRoute(
+                builder: (_) => AlarmRingingScreen(routine: target!),
+              ),
+            );
+          }
         }
       },
     );
@@ -109,7 +147,7 @@ class NotificationService {
     await androidPlugin?.createNotificationChannel(androidChannel);
   }
 
-  NotificationDetails _buildNotificationDetails(String title, {bool allowSnooze = true}) {
+  NotificationDetails _buildNotificationDetails(String title, {bool allowSnooze = true, int snoozeMinutes = 10}) {
     return NotificationDetails(
       android: AndroidNotificationDetails(
         AppConstants.notificationChannelId,
@@ -122,12 +160,11 @@ class NotificationService {
         ticker: title,
         category: AndroidNotificationCategory.alarm,
         visibility: NotificationVisibility.public,
-        // fullScreenIntent omitido intencionalmente para evitar SecurityException no Android 14+
         actions: allowSnooze
             ? <AndroidNotificationAction>[
-                const AndroidNotificationAction(
-                  'action_snooze_10',
-                  'Soneca (+10m)',
+                AndroidNotificationAction(
+                  'action_snooze',
+                  'Soneca (+${snoozeMinutes}m)',
                   showsUserInterface: true,
                   cancelNotification: true,
                 ),
@@ -156,9 +193,10 @@ class NotificationService {
       '[Soneca] $title',
       body,
       snoozeTime,
-      _buildNotificationDetails(title, allowSnooze: false),
+      _buildNotificationDetails(title, allowSnooze: false, snoozeMinutes: minutes),
       androidScheduleMode: scheduleMode,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      payload: title,
     );
   }
 
@@ -169,11 +207,13 @@ class NotificationService {
     required String body,
   }) async {
     await initialize();
+    final settings = await LocalStorageService.loadAlarmSettings();
     await _notificationsPlugin.show(
       id,
       title,
       body,
-      _buildNotificationDetails(title),
+      _buildNotificationDetails(title, snoozeMinutes: settings.snoozeDurationMinutes),
+      payload: title,
     );
   }
 
@@ -184,7 +224,8 @@ class NotificationService {
 
     final now = DateTime.now();
     final tzNow = tz.TZDateTime.now(tz.local);
-    final details = _buildNotificationDetails(routine.title);
+    final settings = await LocalStorageService.loadAlarmSettings();
+    final details = _buildNotificationDetails(routine.title, snoozeMinutes: settings.snoozeDurationMinutes);
 
     final canExact = await canScheduleExact();
     final scheduleMode = canExact
@@ -216,6 +257,7 @@ class NotificationService {
             details,
             androidScheduleMode: scheduleMode,
             uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+            payload: routine.title,
           );
         }
       } else if (routine.type == RoutineType.recurring) {
@@ -234,6 +276,7 @@ class NotificationService {
             androidScheduleMode: scheduleMode,
             uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
             matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+            payload: routine.title,
           );
         }
       } else if (routine.type == RoutineType.periodic) {
@@ -268,6 +311,7 @@ class NotificationService {
             androidScheduleMode: scheduleMode,
             uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
             matchDateTimeComponents: DateTimeComponents.time,
+            payload: routine.title,
           );
         }
       }
@@ -286,6 +330,7 @@ class NotificationService {
                 details,
                 androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
                 uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+                payload: routine.title,
               );
             }
           } else if (routine.type == RoutineType.recurring) {
@@ -301,6 +346,7 @@ class NotificationService {
                 androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
                 uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
                 matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+                payload: routine.title,
               );
             }
           }
