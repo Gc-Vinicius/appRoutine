@@ -27,6 +27,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   // Controller para Edição de Perfil
   final _editNameController = TextEditingController();
   File? _selectedImageFile;
+  String? _initialName;
+
+  @override
+  void initState() {
+    super.initState();
+    _editNameController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
@@ -152,12 +161,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     setState(() => _isLoading = true);
     try {
+      FocusScope.of(context).unfocus();
       final profile = ref.read(userProfileProvider).value;
       await SupabaseService().updateProfile(
         userId: userId,
         nome: newName,
         fotoUrl: profile?.fotoUrl,
       );
+      _initialName = newName;
       ref.invalidate(userProfileProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -200,12 +211,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     dynamic user,
     UserProfile? profile,
   ) {
-    if (_editNameController.text.isEmpty && profile?.nome != null) {
-      _editNameController.text = profile!.nome;
+    if (_initialName == null && profile != null && profile.nome.isNotEmpty) {
+      _initialName = profile.nome;
+      _editNameController.text = profile.nome;
     }
 
     final displayName = profile?.nome ?? user.email ?? 'Usuário';
     final photoUrl = profile?.fotoUrl;
+    final currentText = _editNameController.text.trim();
+    final savedName = (profile?.nome ?? _initialName ?? '').trim();
+    final bool hasChanges = currentText.isNotEmpty && currentText != savedName;
+    final bool canSave = hasChanges && !_isLoading;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -299,10 +315,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           width: double.infinity,
           height: 48,
           child: ElevatedButton(
-            onPressed: _isLoading ? null : () => _handleSaveProfile(user.id as String),
+            onPressed: canSave ? () => _handleSaveProfile(user.id as String) : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: palette.primary,
               foregroundColor: palette.onPrimary,
+              disabledBackgroundColor: palette.surfaceVariant,
+              disabledForegroundColor: palette.textMuted.withValues(alpha: 0.5),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: _isLoading
@@ -311,7 +329,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     height: 22,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : const Text('Salvar Alterações', style: TextStyle(fontWeight: FontWeight.bold)),
+                : Text(
+                    hasChanges ? 'Salvar Alterações' : 'Alterações Salvas',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: canSave ? palette.onPrimary : palette.textMuted,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 20),
