@@ -400,7 +400,7 @@ class HabitHistorySheet extends ConsumerWidget {
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: isDoneToday ? Colors.green.shade800 : palette.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: isDoneToday ? Colors.white : palette.onPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
