@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/routine_model.dart';
 import '../providers/routine_provider.dart';
 import '../screens/create_routine_screen.dart';
+import 'habit_history_sheet.dart';
 import '../../../../core/theme/theme_provider.dart';
 
 class RoutineCard extends ConsumerWidget {
@@ -43,17 +45,16 @@ class RoutineCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = ref.watch(currentPaletteProvider);
+    ref.watch(habitCheckinProvider);
+    final isDoneToday = ref.read(habitCheckinProvider.notifier).isCompletedToday(routine.id ?? 0);
+    final summary = ref.read(habitCheckinProvider.notifier).getSummary(routine.id ?? 0);
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => CreateRoutineScreen(routineToEdit: routine),
-            ),
-          );
+          // Opção 2 solicitada: abrir modal detalhado de histórico ao tocar no card
+          HabitHistorySheet.show(context, routine: routine);
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -65,21 +66,53 @@ class RoutineCard extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      routine.title,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: routine.isActive ? palette.textPrimary : palette.textMuted,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            routine.title,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: routine.isActive ? palette.textPrimary : palette.textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (summary.currentStreak > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.orangeAccent, width: 0.7),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('🔥', style: TextStyle(fontSize: 10)),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${summary.currentStreak}d',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orangeAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Botão Excluir Direto no Card (Feature da Imagem 2)
+                      // Botão Excluir Direto no Card
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
                         tooltip: 'Excluir Rotina',
@@ -126,55 +159,51 @@ class RoutineCard extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
 
-              // Linha 2: Horário em Destaque + Badge de Tipo + Badge de Categoria
+              // Linha 2: Horário de Disparo + Chip de Categoria
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    routine.formattedTime,
+                    '${routine.hour.toString().padLeft(2, '0')}:${routine.minute.toString().padLeft(2, '0')}',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 34,
                       fontWeight: FontWeight.bold,
-                      color: routine.isActive ? palette.textPrimary : palette.textMuted,
+                      letterSpacing: -1,
+                      color: routine.isActive ? palette.primary : palette.textMuted,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
+                  // Tag de Categoria com Emoji
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                     decoration: BoxDecoration(
-                      color: palette.badgeBg,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      routine.typeLabel,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: palette.badgeText,
+                      color: routine.isActive
+                          ? palette.primary.withValues(alpha: 0.15)
+                          : palette.surfaceVariant,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: routine.isActive
+                            ? palette.primary.withValues(alpha: 0.3)
+                            : palette.border,
+                        width: 0.8,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: palette.surfaceVariant,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: palette.border, width: 0.6),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(routine.displayCategoryEmoji, style: const TextStyle(fontSize: 11)),
-                        const SizedBox(width: 4),
+                        Text(
+                          routine.displayCategoryEmoji,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(width: 5),
                         Text(
                           routine.displayCategoryName,
                           style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: palette.textPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: routine.isActive ? palette.primary : palette.textMuted,
                           ),
                         ),
                       ],
@@ -184,7 +213,7 @@ class RoutineCard extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
 
-              // Feedback de Tempo Restante ("Toca em X horas")
+              // Linha: Indicador de Tempo Restante + Ação Rápida de Check-in + Pular Próximo
               Row(
                 children: [
                   Icon(
@@ -201,8 +230,64 @@ class RoutineCard extends ConsumerWidget {
                       color: routine.isCurrentlySkipped ? Colors.orangeAccent : palette.textMuted,
                     ),
                   ),
+                  const Spacer(),
+
+                  // AÇÃO RÁPIDA: Check-in de Hábito (Feito Hoje)
+                  GestureDetector(
+                    onTap: () async {
+                      HapticFeedback.lightImpact();
+                      final isDone = await ref
+                          .read(habitCheckinProvider.notifier)
+                          .toggleCheckinToday(routine.id ?? 0);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isDone
+                                  ? 'Rotina "${routine.title}" marcada como feita hoje! 🎉'
+                                  : 'Check-in desmarcado.',
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isDoneToday
+                            ? Colors.green.withValues(alpha: 0.18)
+                            : palette.surfaceVariant,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: isDoneToday ? Colors.greenAccent : palette.border,
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isDoneToday ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+                            size: 12,
+                            color: isDoneToday ? Colors.greenAccent : palette.textMuted,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isDoneToday ? 'Feito hoje ✓' : 'Marcar feito',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isDoneToday ? Colors.greenAccent : palette.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   if (routine.isActive) ...[
-                    const Spacer(),
+                    const SizedBox(width: 6),
                     GestureDetector(
                       onTap: () {
                         ref.read(routineListProvider.notifier).toggleSkipNext(routine.id!);
@@ -210,10 +295,14 @@ class RoutineCard extends ConsumerWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: routine.isCurrentlySkipped ? Colors.orange.withValues(alpha: 0.15) : palette.surfaceVariant,
+                          color: routine.isCurrentlySkipped
+                              ? Colors.orange.withValues(alpha: 0.15)
+                              : palette.surfaceVariant,
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: routine.isCurrentlySkipped ? Colors.orangeAccent : palette.border,
+                            color: routine.isCurrentlySkipped
+                                ? Colors.orangeAccent
+                                : palette.border,
                             width: 0.8,
                           ),
                         ),
@@ -222,7 +311,9 @@ class RoutineCard extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: routine.isCurrentlySkipped ? Colors.orangeAccent : palette.primary,
+                            color: routine.isCurrentlySkipped
+                                ? Colors.orangeAccent
+                                : palette.primary,
                           ),
                         ),
                       ),
@@ -257,15 +348,34 @@ class RoutineCard extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
-              // Linha 4: Subtítulo ou Dias da Semana
-              if (routine.type == RoutineType.recurring) ...[
-                _buildWeekdaysRow(palette),
-              ] else ...[
-                Text(
-                  routine.recurrenceSubtitle,
-                  style: TextStyle(fontSize: 11, color: palette.textMuted),
-                ),
-              ],
+              // Linha 4: Subtítulo ou Dias da Semana + Dica de Histórico
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (routine.type == RoutineType.recurring)
+                    _buildWeekdaysRow(palette)
+                  else
+                    Text(
+                      routine.recurrenceSubtitle,
+                      style: TextStyle(fontSize: 11, color: palette.textMuted),
+                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bar_chart_rounded, size: 13, color: palette.textMuted),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Histórico',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: palette.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ],
           ),
         ),

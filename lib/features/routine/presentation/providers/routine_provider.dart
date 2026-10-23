@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/routine_repository.dart';
 import '../../domain/alarm_settings_model.dart';
 import '../../domain/category_item.dart';
+import '../../domain/habit_checkin_model.dart';
 import '../../domain/routine_model.dart';
 import '../../../../core/services/local_storage_service.dart';
 import '../../../../core/services/permission_service.dart';
@@ -51,6 +52,41 @@ class RoutineListNotifier extends StateNotifier<List<RoutineModel>> {
 final routineListProvider = StateNotifierProvider<RoutineListNotifier, List<RoutineModel>>((ref) {
   final repo = ref.watch(routineRepositoryProvider);
   return RoutineListNotifier(repo);
+});
+
+// Provedor de Check-ins e Histórico de Hábitos
+class HabitCheckinNotifier extends StateNotifier<List<HabitCheckinModel>> {
+  HabitCheckinNotifier() : super([]) {
+    loadCheckins();
+  }
+
+  Future<void> loadCheckins() async {
+    final list = await LocalStorageService.loadCheckins();
+    state = list;
+  }
+
+  Future<bool> toggleCheckinToday(int routineId) async {
+    final isDone = await LocalStorageService.toggleCheckinToday(routineId);
+    await loadCheckins();
+    return isDone;
+  }
+
+  bool isCompletedToday(int routineId) {
+    final now = DateTime.now();
+    final todayKey = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return state.any((c) => c.routineId == routineId && c.dateKey == todayKey && c.isCompleted);
+  }
+
+  HabitComplianceSummary getSummary(int routineId) {
+    return HabitComplianceSummary.fromCheckins(
+      routineId: routineId,
+      checkins: state,
+    );
+  }
+}
+
+final habitCheckinProvider = StateNotifierProvider<HabitCheckinNotifier, List<HabitCheckinModel>>((ref) {
+  return HabitCheckinNotifier();
 });
 
 // Provedor de Categorias Customizadas com Emojis

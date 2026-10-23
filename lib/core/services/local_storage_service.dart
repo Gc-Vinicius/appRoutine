@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import '../theme/app_colors.dart';
 import '../../features/routine/domain/alarm_settings_model.dart';
 import '../../features/routine/domain/category_item.dart';
+import '../../features/routine/domain/habit_checkin_model.dart';
 import '../../features/routine/domain/routine_model.dart';
 import '../../features/routine/domain/timer_preset_item.dart';
 
@@ -15,6 +16,7 @@ class LocalStorageService {
   static const String _categoriesFileName = 'custom_categories.json';
   static const String _timerPresetsFileName = 'timer_presets.json';
   static const String _alarmSettingsFileName = 'alarm_settings.json';
+  static const String _habitCheckinsFileName = 'habit_checkins.json';
 
   static Future<File> _getFile(String fileName) async {
     final dir = await getApplicationDocumentsDirectory();
@@ -206,94 +208,101 @@ class LocalStorageService {
     }
   }
 
-  /// Gera um backup JSON completo e formatado contendo todas as rotinas e preferências
-  static Future<String> exportBackupJson() async {
-    final routines = await loadRoutines() ?? [];
-    final currentTheme = await loadSavedTheme();
-    final themeId = AppPalettes.getPalette(currentTheme).id;
-    final categories = await loadCategories();
-    final presets = await loadTimerPresets();
-    final alarmSettings = await loadAlarmSettings();
+  // ==========================================
+  // HISTÓRICO DE HÁBITOS & CHECK-INS (OFFLINE)
+  // ==========================================
 
-    final backupMap = {
-      'app': 'appRoutine',
-      'version': '1.3.0',
-      'exportDate': DateTime.now().toIso8601String(),
-      'themeId': themeId,
-      'totalRoutines': routines.length,
-      'routines': routines.map((r) => r.toJson()).toList(),
-      'customCategories': categories.map((c) => c.toJson()).toList(),
-      'timerPresets': presets.map((p) => p.toJson()).toList(),
-      'alarmSettings': alarmSettings.toJson(),
-    };
-
-    return const JsonEncoder.withIndent('  ').convert(backupMap);
+  /// Carrega todos os registros de check-in salvos
+  static Future<List<HabitCheckinModel>> loadCheckins() async {
+    try {
+      final file = await _getFile(_habitCheckinsFileName);
+      if (!await file.exists()) {
+        return [];
+      }
+      final jsonString = await file.readAsString();
+      if (jsonString.trim().isEmpty) {
+        return [];
+      }
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      return jsonList
+          .map((item) => HabitCheckinModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint('[LocalStorageService] Erro ao ler check-ins: $e');
+      return [];
+    }
   }
 
-  /// Importa e valida um backup JSON, restaurando as rotinas e configurações offline
-  static Future<int> importBackupJson(String jsonString) async {
+  /// Salva a lista de check-ins
+  static Future<void> saveCheckins(List<HabitCheckinModel> checkins) async {
     try {
-      final decoded = jsonDecode(jsonString.trim());
-      if (decoded is! Map<String, dynamic>) {
-        throw const FormatException('Estrutura JSON inválida para backup.');
-      }
-
-      final routinesList = decoded['routines'];
-      if (routinesList is! List) {
-        throw const FormatException('Lista de rotinas não encontrada no backup.');
-      }
-
-      final List<RoutineModel> imported = [];
-      for (final item in routinesList) {
-        if (item is Map<String, dynamic>) {
-          imported.add(RoutineModel.fromJson(item));
-        }
-      }
-
-      await saveRoutines(imported);
-
-      if (decoded['themeId'] != null) {
-        final themeId = decoded['themeId'] as String;
-        final matchedPalette = AppThemePalette.values.firstWhere(
-          (p) => AppPalettes.getPalette(p).id == themeId,
-          orElse: () => AppThemePalette.amoledMonocromatico,
-        );
-        await saveTheme(matchedPalette);
-      }
-
-      if (decoded['customCategories'] is List) {
-        final List<CategoryItem> cats = [];
-        for (final item in decoded['customCategories']) {
-          if (item is Map<String, dynamic>) {
-            cats.add(CategoryItem.fromJson(item));
-          }
-        }
-        if (cats.isNotEmpty) {
-          await saveCategories(cats);
-        }
-      }
-
-      if (decoded['timerPresets'] is List) {
-        final List<TimerPresetItem> pres = [];
-        for (final item in decoded['timerPresets']) {
-          if (item is Map<String, dynamic>) {
-            pres.add(TimerPresetItem.fromJson(item));
-          }
-        }
-        if (pres.isNotEmpty) {
-          await saveTimerPresets(pres);
-        }
-      }
-
-      if (decoded['alarmSettings'] is Map<String, dynamic>) {
-        final settings = AlarmSettingsModel.fromJson(decoded['alarmSettings'] as Map<String, dynamic>);
-        await saveAlarmSettings(settings);
-      }
-
-      return imported.length;
+      final file = await _getFile(_habitCheckinsFileName);
+      final jsonList = checkins.map((c) => c.toJson()).toList();
+      await file.writeAsString(jsonEncode(jsonList), flush: true);
     } catch (e) {
-      debugPrint('[LocalStorageService] Erro ao importar backup: $e');
-      rethrow;
+      debugPrint('[LocalStorageService] Erro ao salvar check-ins: $e');
     }
+  }
+
+  /// Retorna os check-ins de uma rotina específica ordenados do mais recente para o mais antigo
+  static Future<List<HabitCheckinModel>> getCheckinsForRoutine(int routineId) async {
+    final all = await loadCheckins();
+    final filtered = all.where((c) => c.routineId == routineId).toList();
+    filtered.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+    return filtered;
+  }
+
+  /// Alterna o estado de conclusão do hábito hoje para a rotina informada.
+  /// Retorna `true` se foi marcado como concluído, ou `false` se foi desmarcado.
+  static Future<bool> toggleCheckinToday(int routineId) async {
+    final all = await loadCheckins();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayKey = '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    final existingIndex = all.indexWhere(
+      (c) => c.routineId == routineId && c.dateKey == todayKey,
+    );
+
+    bool isNowCompleted = true;
+    if (existingIndex >= 0) {
+      final current = all[existingIndex];
+      if (current.isCompleted) {
+        // Desmarca
+        all[existingIndex] = current.copyWith(
+          isCompleted: false,
+          completedAt: now,
+        );
+        isNowCompleted = false;
+      } else {
+        // Marca novamente
+        all[existingIndex] = current.copyWith(
+          isCompleted: true,
+          completedAt: now,
+        );
+        isNowCompleted = true;
+      }
+    } else {
+      // Cria novo registro concluído
+      all.add(HabitCheckinModel(
+        routineId: routineId,
+        date: today,
+        completedAt: now,
+        isCompleted: true,
+      ));
+      isNowCompleted = true;
+    }
+
+    await saveCheckins(all);
+    return isNowCompleted;
+  }
+
+  /// Obtém o sumário estatístico dos últimos 7 dias para a rotina
+  static Future<HabitComplianceSummary> getComplianceSummary(int routineId) async {
+    final checkins = await getCheckinsForRoutine(routineId);
+    return HabitComplianceSummary.fromCheckins(
+      routineId: routineId,
+      checkins: checkins,
+    );
   }
 }

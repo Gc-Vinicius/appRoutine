@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app_routine/features/routine/domain/alarm_settings_model.dart';
 import 'package:app_routine/features/routine/domain/category_item.dart';
+import 'package:app_routine/features/routine/domain/habit_checkin_model.dart';
 import 'package:app_routine/features/routine/domain/routine_model.dart';
 import 'package:app_routine/features/routine/domain/timer_preset_item.dart';
 import 'package:app_routine/core/theme/app_colors.dart';
@@ -210,6 +211,98 @@ void main() {
       expect(fromJson.maxSnoozeCount, equals(2));
       expect(fromJson.crescendoVolume, isFalse);
       expect(fromJson.crescendoDurationSeconds, equals(30));
+    });
+  });
+
+  group('HabitCheckinModel & Habits Tests', () {
+    test('HabitCheckinModel serialization and helpers', () {
+      final now = DateTime.now();
+      final checkin = HabitCheckinModel(
+        routineId: 77,
+        date: DateTime(now.year, now.month, now.day),
+        completedAt: now,
+        isCompleted: true,
+      );
+
+      final json = checkin.toJson();
+      final fromJson = HabitCheckinModel.fromJson(json);
+
+      expect(fromJson.routineId, equals(77));
+      expect(fromJson.isToday, isTrue);
+      expect(fromJson.isCompleted, isTrue);
+      expect(fromJson.dateKey, equals(checkin.dateKey));
+    });
+
+    test('HabitComplianceSummary calculates correct ratio, percentage and 7 days list', () {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      // Check-ins para hoje, ontem e anteontem
+      final checkins = [
+        HabitCheckinModel(
+          routineId: 1,
+          date: today,
+          completedAt: now,
+          isCompleted: true,
+        ),
+        HabitCheckinModel(
+          routineId: 1,
+          date: today.subtract(const Duration(days: 1)),
+          completedAt: now.subtract(const Duration(days: 1)),
+          isCompleted: true,
+        ),
+        HabitCheckinModel(
+          routineId: 1,
+          date: today.subtract(const Duration(days: 2)),
+          completedAt: now.subtract(const Duration(days: 2)),
+          isCompleted: true,
+        ),
+      ];
+
+      final summary = HabitComplianceSummary.fromCheckins(
+        routineId: 1,
+        checkins: checkins,
+      );
+
+      expect(summary.routineId, equals(1));
+      expect(summary.totalDaysLast7, equals(7));
+      expect(summary.completedDaysLast7, equals(3));
+      expect(summary.formattedRatio, equals('3 de 7 dias'));
+      expect(summary.formattedPercentage, equals('43%'));
+      expect(summary.isCompletedToday, isTrue);
+      expect(summary.currentStreak, equals(3));
+      expect(summary.last7Days.length, equals(7));
+    });
+
+    test('HabitComplianceSummary calculates streak when today is not yet completed', () {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      // Check-ins para ontem e anteontem (hoje ainda não feito)
+      final checkins = [
+        HabitCheckinModel(
+          routineId: 1,
+          date: today.subtract(const Duration(days: 1)),
+          completedAt: now.subtract(const Duration(days: 1)),
+          isCompleted: true,
+        ),
+        HabitCheckinModel(
+          routineId: 1,
+          date: today.subtract(const Duration(days: 2)),
+          completedAt: now.subtract(const Duration(days: 2)),
+          isCompleted: true,
+        ),
+      ];
+
+      final summary = HabitComplianceSummary.fromCheckins(
+        routineId: 1,
+        checkins: checkins,
+      );
+
+      expect(summary.isCompletedToday, isFalse);
+      expect(summary.completedDaysLast7, equals(2));
+      // Streak continua vivo de ontem: 2 dias
+      expect(summary.currentStreak, equals(2));
     });
   });
 

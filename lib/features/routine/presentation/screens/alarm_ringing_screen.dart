@@ -135,6 +135,26 @@ class _AlarmRingingScreenState extends ConsumerState<AlarmRingingScreen>
     }
   }
 
+  Future<void> _onCompleteAndDismiss() async {
+    if (_isDismissed) return;
+    _stopAlarm();
+
+    HapticFeedback.vibrate();
+    if (widget.routine.id != null) {
+      await ref.read(habitCheckinProvider.notifier).toggleCheckinToday(widget.routine.id!);
+    }
+
+    if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Parabéns! Rotina "${widget.routine.title}" concluída com sucesso! 🎉'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   Future<void> _onSnoozePressed() async {
     final settings = ref.read(alarmSettingsProvider);
     if (widget.snoozeCount >= settings.maxSnoozeCount) return;
@@ -366,7 +386,30 @@ class _AlarmRingingScreenState extends ConsumerState<AlarmRingingScreen>
                   children: [
                     // Botão Deslizante
                     _buildSlideToDismiss(palette),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+
+                    // Botão Concluir Tarefa e Desligar
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: _onCompleteAndDismiss,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade800,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(Icons.check_circle_outline, size: 20),
+                        label: const Text(
+                          'Concluir Tarefa e Desligar ✓',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
 
                     // Botão Soneca
                     SizedBox(

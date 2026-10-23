@@ -42,7 +42,24 @@ class NotificationService {
     await _notificationsPlugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (response) async {
-        if (response.actionId == 'action_snooze' || response.actionId == 'action_snooze_10') {
+        if (response.actionId == 'action_done') {
+          final routines = await LocalStorageService.loadRoutines();
+          final respId = response.id;
+          if (routines != null && respId != null) {
+            final target = routines.cast<RoutineModel?>().firstWhere(
+              (r) =>
+                  r?.id == respId ||
+                  (r != null &&
+                      (respId ~/ 10 == r.id ||
+                          respId ~/ 100 == r.id)),
+              orElse: () => null,
+            );
+            final targetId = target?.id;
+            if (targetId != null) {
+              await LocalStorageService.toggleCheckinToday(targetId);
+            }
+          }
+        } else if (response.actionId == 'action_snooze' || response.actionId == 'action_snooze_10') {
           final id = response.id ?? 9999;
           final title = response.payload ?? 'Lembrete em Soneca';
           final settings = await LocalStorageService.loadAlarmSettings();
@@ -162,6 +179,12 @@ class NotificationService {
         visibility: NotificationVisibility.public,
         actions: allowSnooze
             ? <AndroidNotificationAction>[
+                const AndroidNotificationAction(
+                  'action_done',
+                  'Concluir ✓',
+                  showsUserInterface: false,
+                  cancelNotification: true,
+                ),
                 AndroidNotificationAction(
                   'action_snooze',
                   'Soneca (+${snoozeMinutes}m)',
