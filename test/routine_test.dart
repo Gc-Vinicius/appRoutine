@@ -306,4 +306,15 @@ void main() {
     });
   });
 
+  group('Time Wheel & Clock Tests', () {
+    test('Modulo logic correctly loops backwards from 0 to 23 and 59', () {
+      expect((-1 % 24 + 24) % 24, equals(23));
+      expect((-2 % 24 + 24) % 24, equals(22));
+      expect((-1 % 60 + 60) % 60, equals(59));
+      expect((-2 % 60 + 60) % 60, equals(58));
+      expect((60 % 60 + 60) % 60, equals(0));
+      expect((24 % 24 + 24) % 24, equals(0));
+    });
+  });
+
 }

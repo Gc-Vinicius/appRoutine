@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../screens/dedicated_clock_screen.dart';
 import '../../../../core/theme/theme_provider.dart';
 
 class LiveClockWidget extends ConsumerStatefulWidget {
@@ -50,8 +51,8 @@ class _LiveClockWidgetState extends ConsumerState<LiveClockWidget> {
     final dateStr = _formatDate(_currentTime);
 
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
       decoration: BoxDecoration(
         color: palette.surface,
         borderRadius: BorderRadius.circular(20),
@@ -64,50 +65,92 @@ class _LiveClockWidgetState extends ConsumerState<LiveClockWidget> {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Mostrador de Relógio Analógico Estilizado
-          SizedBox(
-            width: 110,
-            height: 110,
-            child: CustomPaint(
-              painter: _AnalogClockPainter(
-                time: _currentTime,
-                dialColor: palette.surfaceVariant,
-                borderColor: palette.border,
-                hourHandColor: palette.textPrimary,
-                minuteHandColor: palette.textSecondary,
-                secondHandColor: palette.primary,
-                centerDotColor: palette.primary,
-                textColor: palette.textSecondary,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const DedicatedClockScreen(),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Ícone discreto indicando interatividade
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Tela cheia',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: palette.textMuted.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      Icon(
+                        Icons.fullscreen_rounded,
+                        size: 15,
+                        color: palette.textMuted.withValues(alpha: 0.6),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
 
-          // Horário Digital com Segundos
-          Text(
-            timeStr,
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
-              color: palette.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
+                // Mostrador de Relógio Analógico Estilizado
+                SizedBox(
+                  width: 110,
+                  height: 110,
+                  child: CustomPaint(
+                    painter: _AnalogClockPainter(
+                      time: _currentTime,
+                      dialColor: palette.surfaceVariant,
+                      borderColor: palette.border,
+                      hourHandColor: palette.textPrimary,
+                      minuteHandColor: palette.textSecondary,
+                      secondHandColor: palette.primary,
+                      centerDotColor: palette.primary,
+                      textColor: palette.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
 
-          // Data e Localidade
-          Text(
-            'Horário local • $dateStr',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: palette.textMuted,
+                // Horário Digital com Segundos
+                Text(
+                  timeStr,
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                    color: palette.textPrimary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 4),
+
+                // Data e Localidade
+                Text(
+                  'Horário local • $dateStr',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: palette.textMuted,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

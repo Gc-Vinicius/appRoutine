@@ -57,7 +57,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _selectedCategory = RoutineCategory.general;
       _customCategoryName = null;
       _customCategoryEmoji = null;
-      _selectedTime = const TimeOfDay(hour: 7, minute: 0);
+      _selectedTime = TimeOfDay.now();
       _selectedWeekdays = [1, 2, 3, 4, 5]; // Seg a Sex padrão
       _selectedPunctualDate = DateTime.now();
       _intervalMinutes = 120;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 
-/// Seletor de Horário no estilo Wheel / Spinner vertical (solicitado na Imagem 3)
+/// Seletor de Horário no estilo Wheel / Spinner vertical com rolagem contínua cíclica (loop infinito)
 class TimeWheelPickerDialog extends StatefulWidget {
   final TimeOfDay initialTime;
   final AppPaletteData palette;
@@ -58,6 +58,20 @@ class _TimeWheelPickerDialogState extends State<TimeWheelPickerDialog> {
     super.dispose();
   }
 
+  void _jumpToCurrentTime() {
+    final now = TimeOfDay.now();
+    setState(() {
+      _selectedHour = now.hour;
+      _selectedMinute = now.minute;
+    });
+    if (_hourController.hasClients) {
+      _hourController.jumpToItem(now.hour);
+    }
+    if (_minuteController.hasClients) {
+      _minuteController.jumpToItem(now.minute);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = widget.palette;
@@ -83,18 +97,41 @@ class _TimeWheelPickerDialogState extends State<TimeWheelPickerDialog> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Título do Modal
-          Text(
-            'Selecionar Horário',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: palette.textPrimary,
-            ),
+          // Título do Modal + Botão Atalho "Hora atual"
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Selecionar Horário',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: palette.textPrimary,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _jumpToCurrentTime,
+                icon: Icon(Icons.access_time_rounded, size: 15, color: palette.primary),
+                label: Text(
+                  'Hora atual',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: palette.primary,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  backgroundColor: palette.surfaceVariant,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // Cabeçalhos das Colunas: H e M
           Row(
@@ -131,7 +168,7 @@ class _TimeWheelPickerDialogState extends State<TimeWheelPickerDialog> {
           ),
           const SizedBox(height: 8),
 
-          // Rodas Verticais de Horas e Minutos (Wheel Spinner)
+          // Rodas Verticais de Horas e Minutos (Wheel Spinner Cíclico)
           SizedBox(
             height: 190,
             child: Stack(
@@ -150,7 +187,7 @@ class _TimeWheelPickerDialogState extends State<TimeWheelPickerDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Coluna de Horas (00 a 23)
+                    // Coluna de Horas (00 a 23 com Looping Cíclico)
                     SizedBox(
                       width: 90,
                       child: ListWheelScrollView.useDelegate(
@@ -161,16 +198,15 @@ class _TimeWheelPickerDialogState extends State<TimeWheelPickerDialog> {
                         diameterRatio: 1.5,
                         onSelectedItemChanged: (index) {
                           setState(() {
-                            _selectedHour = index;
+                            _selectedHour = (index % 24 + 24) % 24;
                           });
                         },
-                        childDelegate: ListWheelChildBuilderDelegate(
-                          childCount: 24,
-                          builder: (context, index) {
-                            final isSelected = index == _selectedHour;
+                        childDelegate: ListWheelChildLoopingListDelegate(
+                          children: List.generate(24, (i) {
+                            final isSelected = i == _selectedHour;
                             return Center(
                               child: Text(
-                                index.toString().padLeft(2, '0'),
+                                i.toString().padLeft(2, '0'),
                                 style: TextStyle(
                                   fontSize: isSelected ? 28 : 20,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
@@ -178,7 +214,7 @@ class _TimeWheelPickerDialogState extends State<TimeWheelPickerDialog> {
                                 ),
                               ),
                             );
-                          },
+                          }),
                         ),
                       ),
                     ),
@@ -196,7 +232,7 @@ class _TimeWheelPickerDialogState extends State<TimeWheelPickerDialog> {
                       ),
                     ),
 
-                    // Coluna de Minutos (00 a 59)
+                    // Coluna de Minutos (00 a 59 com Looping Cíclico)
                     SizedBox(
                       width: 90,
                       child: ListWheelScrollView.useDelegate(
@@ -207,16 +243,15 @@ class _TimeWheelPickerDialogState extends State<TimeWheelPickerDialog> {
                         diameterRatio: 1.5,
                         onSelectedItemChanged: (index) {
                           setState(() {
-                            _selectedMinute = index;
+                            _selectedMinute = (index % 60 + 60) % 60;
                           });
                         },
-                        childDelegate: ListWheelChildBuilderDelegate(
-                          childCount: 60,
-                          builder: (context, index) {
-                            final isSelected = index == _selectedMinute;
+                        childDelegate: ListWheelChildLoopingListDelegate(
+                          children: List.generate(60, (i) {
+                            final isSelected = i == _selectedMinute;
                             return Center(
                               child: Text(
-                                index.toString().padLeft(2, '0'),
+                                i.toString().padLeft(2, '0'),
                                 style: TextStyle(
                                   fontSize: isSelected ? 28 : 20,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
@@ -224,7 +259,7 @@ class _TimeWheelPickerDialogState extends State<TimeWheelPickerDialog> {
                                 ),
                               ),
                             );
-                          },
+                          }),
                         ),
                       ),
                     ),
