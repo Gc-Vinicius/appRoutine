@@ -54,6 +54,11 @@ class PermissionService {
     return granted;
   }
 
+  /// Solicita permissão para abrir em tela cheia sobre a tela de bloqueio (Android 14+)
+  Future<bool> requestFullScreenIntentPermission() async {
+    return await NotificationService().requestFullScreenIntentPermission();
+  }
+
   /// Redireciona o usuário para ativar 'Alarmes e Lembretes' no Android 12/13/14/15
   Future<void> requestExactAlarmPermission() async {
     await NotificationService().requestExactAlarmPermission();

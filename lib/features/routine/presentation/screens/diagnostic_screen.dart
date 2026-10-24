@@ -1,4 +1,4 @@
-﻿import '../../../../core/providers/auth_provider.dart';
+import '../../../../core/providers/auth_provider.dart';
 import 'auth_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -300,6 +300,16 @@ class DiagnosticScreen extends ConsumerWidget {
                       isGranted: perms.hasBatteryOptimizationExemption,
                       onRequest: () async {
                         await PermissionService().requestBatteryOptimizationExemption();
+                        ref.invalidate(permissionsProvider);
+                      },
+                    ),
+                    _buildPermissionItem(
+                      palette: palette,
+                      title: 'Tela Cheia sobre Bloqueio (Android 14+)',
+                      desc: 'Permite abrir automaticamente a tela cheia do alarme por cima do bloqueio.',
+                      isGranted: true,
+                      onRequest: () async {
+                        await PermissionService().requestFullScreenIntentPermission();
                         ref.invalidate(permissionsProvider);
                       },
                     ),

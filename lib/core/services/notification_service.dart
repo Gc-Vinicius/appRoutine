@@ -18,6 +18,7 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
+  static bool isAlarmScreenOpen = false;
 
   AndroidFlutterLocalNotificationsPlugin? get androidPlugin =>
       _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
@@ -41,78 +42,120 @@ class NotificationService {
 
     await _notificationsPlugin.initialize(
       initSettings,
-      onDidReceiveNotificationResponse: (response) async {
-        if (response.actionId == 'action_done') {
-          final routines = await LocalStorageService.loadRoutines();
-          final respId = response.id;
-          if (routines != null && respId != null) {
-            final target = routines.cast<RoutineModel?>().firstWhere(
-              (r) =>
-                  r?.id == respId ||
-                  (r != null &&
-                      (respId ~/ 10 == r.id ||
-                          respId ~/ 100 == r.id)),
-              orElse: () => null,
-            );
-            final targetId = target?.id;
-            if (targetId != null) {
-              await LocalStorageService.toggleCheckinToday(targetId);
-            }
-          }
-        } else if (response.actionId == 'action_snooze' || response.actionId == 'action_snooze_10') {
-          final id = response.id ?? 9999;
-          final title = response.payload ?? 'Lembrete em Soneca';
-          final settings = await LocalStorageService.loadAlarmSettings();
-          await snoozeRoutine(
-            id: id,
-            title: title,
-            body: 'Soneca ativada (+${settings.snoozeDurationMinutes} minutos)',
-            minutes: settings.snoozeDurationMinutes,
-          );
-        } else {
-          // Usuário tocou na notificação principal: abrir AlarmRingingScreen
-          final nav = appNavigatorKey.currentState;
-          if (nav != null) {
-            final routines = await LocalStorageService.loadRoutines();
-            RoutineModel? target;
-            if (routines != null && response.id != null) {
-              try {
-                target = routines.firstWhere(
-                  (r) =>
-                      r.id == response.id ||
-                      (r.id != null &&
-                          (response.id! ~/ 10 == r.id ||
-                              response.id! ~/ 100 == r.id)),
-                );
-              } catch (_) {}
-            }
-            target ??= RoutineModel(
-              id: response.id ?? 9999,
-              title: response.payload ?? 'Hora da Rotina!',
-              body: 'Alarme disparado no seu celular e relógio.',
-              type: RoutineType.recurring,
-              category: RoutineCategory.general,
-              hour: DateTime.now().hour,
-              minute: DateTime.now().minute,
-              isAlarm: true,
-              isActive: true,
-              createdAt: DateTime.now(),
-            );
-            // Somente alarmes abrem a tela cheia de despertar. Lembretes apenas abrem o app.
-            if (target.isAlarm) {
-              nav.push(
-                MaterialPageRoute(
-                  builder: (_) => AlarmRingingScreen(routine: target!),
-                ),
-              );
-            }
-          }
-        }
-      },
+      onDidReceiveNotificationResponse: _handleNotificationResponse,
     );
 
     await _createHighPriorityChannel();
     _isInitialized = true;
+
+    // Trata inicialização via cold start (quando app é acordado fechado pela notificação/fullScreenIntent)
+    _checkLaunchNotificationDetails();
+  }
+
+  Future<void> _checkLaunchNotificationDetails() async {
+    try {
+      final launchDetails = await _notificationsPlugin.getNotificationAppLaunchDetails();
+      if (launchDetails != null &&
+          launchDetails.didNotificationLaunchApp &&
+          launchDetails.notificationResponse != null) {
+        // Aguarda a montagem do appNavigatorKey na árvore de widgets
+        for (int i = 0; i < 15; i++) {
+          if (appNavigatorKey.currentState != null) {
+            await _handleNotificationResponse(launchDetails.notificationResponse!);
+            break;
+          }
+          await Future.delayed(const Duration(milliseconds: 150));
+        }
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] _checkLaunchNotificationDetails: $e');
+    }
+  }
+
+  Future<void> _handleNotificationResponse(NotificationResponse response) async {
+    if (response.actionId == 'action_done') {
+      final routines = await LocalStorageService.loadRoutines();
+      final respId = response.id;
+      if (routines != null && respId != null) {
+        final target = routines.cast<RoutineModel?>().firstWhere(
+          (r) =>
+              r?.id == respId ||
+              (r != null &&
+                  (respId ~/ 10 == r.id ||
+                      respId ~/ 100 == r.id)),
+          orElse: () => null,
+        );
+        final targetId = target?.id;
+        if (targetId != null) {
+          await LocalStorageService.toggleCheckinToday(targetId);
+        }
+      }
+    } else if (response.actionId == 'action_snooze' || response.actionId == 'action_snooze_10') {
+      final id = response.id ?? 9999;
+      final title = response.payload ?? 'Lembrete em Soneca';
+      final settings = await LocalStorageService.loadAlarmSettings();
+      await snoozeRoutine(
+        id: id,
+        title: title,
+        body: 'Soneca ativada (+${settings.snoozeDurationMinutes} minutos)',
+        minutes: settings.snoozeDurationMinutes,
+      );
+    } else {
+      // Usuário tocou na notificação principal ou SO disparou o fullScreenIntent
+      await openAlarmScreenForId(response.id, payload: response.payload);
+    }
+  }
+
+  /// Abre a tela imersiva de alarme tocando caso seja um alarme e ainda não esteja aberta
+  Future<void> openAlarmScreenForId(
+    int? notificationId, {
+    String? payload,
+    RoutineModel? explicitRoutine,
+  }) async {
+    if (isAlarmScreenOpen) return;
+
+    final nav = appNavigatorKey.currentState;
+    if (nav == null) return;
+
+    RoutineModel? target = explicitRoutine;
+    if (target == null) {
+      final routines = await LocalStorageService.loadRoutines();
+      if (routines != null && notificationId != null) {
+        try {
+          target = routines.firstWhere(
+            (r) =>
+                r.id == notificationId ||
+                (r.id != null &&
+                    (notificationId ~/ 10 == r.id ||
+                        notificationId ~/ 100 == r.id)),
+          );
+        } catch (_) {}
+      }
+      target ??= RoutineModel(
+        id: notificationId ?? 9999,
+        title: payload ?? 'Hora da Rotina!',
+        body: 'Alarme disparado no seu celular e relógio.',
+        type: RoutineType.recurring,
+        category: RoutineCategory.general,
+        hour: DateTime.now().hour,
+        minute: DateTime.now().minute,
+        isAlarm: true,
+        isActive: true,
+        createdAt: DateTime.now(),
+      );
+    }
+
+    // Somente alarmes abrem a tela cheia de despertar. Lembretes apenas abrem o app.
+    if (target.isAlarm) {
+      isAlarmScreenOpen = true;
+      nav.push(
+        MaterialPageRoute(
+          builder: (_) => AlarmRingingScreen(routine: target!),
+        ),
+      ).then((_) {
+        isAlarmScreenOpen = false;
+      });
+    }
   }
 
   /// Checa se o sistema operacional autorizou agendamento de alarmes exatos
@@ -149,6 +192,20 @@ class NotificationService {
       }
     } catch (e) {
       debugPrint('[NotificationService] requestNotificationPermission: $e');
+    }
+    return false;
+  }
+
+  /// Solicita permissão nativa de tela cheia / sobreposição ao bloquear (Android 14+)
+  Future<bool> requestFullScreenIntentPermission() async {
+    try {
+      final plugin = androidPlugin;
+      if (plugin != null) {
+        final granted = await plugin.requestFullScreenIntentPermission();
+        return granted ?? false;
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] requestFullScreenIntentPermission: $e');
     }
     return false;
   }
@@ -209,6 +266,7 @@ class NotificationService {
           ticker: title,
           category: AndroidNotificationCategory.alarm,
           visibility: NotificationVisibility.public,
+          fullScreenIntent: true,
           actions: allowSnooze
               ? <AndroidNotificationAction>[
                   const AndroidNotificationAction(
@@ -241,6 +299,7 @@ class NotificationService {
           ticker: title,
           category: AndroidNotificationCategory.reminder,
           visibility: NotificationVisibility.public,
+          fullScreenIntent: false,
           actions: const <AndroidNotificationAction>[
             AndroidNotificationAction(
               'action_done',
@@ -285,6 +344,7 @@ class NotificationService {
     required int id,
     required String title,
     required String body,
+    bool isAlarm = true,
   }) async {
     await initialize();
     final settings = await LocalStorageService.loadAlarmSettings();
@@ -292,7 +352,11 @@ class NotificationService {
       id,
       title,
       body,
-      _buildNotificationDetails(title, snoozeMinutes: settings.snoozeDurationMinutes),
+      _buildNotificationDetails(
+        title,
+        isAlarm: isAlarm,
+        snoozeMinutes: settings.snoozeDurationMinutes,
+      ),
       payload: title,
     );
   }
@@ -483,9 +547,14 @@ class NotificationService {
       '⏰ Teste Agendado (10s)!',
       'O sistema operacional acordou e disparou no seu pulso!',
       targetTime,
-      _buildNotificationDetails('Teste Agendado', allowSnooze: false),
+      _buildNotificationDetails(
+        'Teste Agendado',
+        isAlarm: true,
+        allowSnooze: false,
+      ),
       androidScheduleMode: scheduleMode,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      payload: '⏰ Teste Agendado (10s)!',
     );
   }
 
