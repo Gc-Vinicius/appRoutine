@@ -79,6 +79,7 @@ class SupabaseSyncService {
             'window_end_hour': r.windowEndHour,
             'punctual_date': r.punctualDate?.toUtc().toIso8601String(),
             'skipped_until': r.skippedUntil?.toUtc().toIso8601String(),
+            'is_alarm': r.isAlarm,
             'is_active': r.isActive,
             'created_at': r.createdAt.toUtc().toIso8601String(),
             'updated_at': nowIso,
@@ -136,6 +137,7 @@ class SupabaseSyncService {
                 skippedUntil: row['skipped_until'] != null
                     ? DateTime.parse(row['skipped_until'] as String)
                     : null,
+                isAlarm: (row['is_alarm'] as bool?) ?? true,
                 isActive: (row['is_active'] as bool?) ?? true,
                 createdAt: DateTime.parse(row['created_at'] as String),
               ),

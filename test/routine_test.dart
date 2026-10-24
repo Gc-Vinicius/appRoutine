@@ -1,4 +1,4 @@
-﻿import 'package:app_routine/core/config/supabase_config.dart';
+import 'package:app_routine/core/config/supabase_config.dart';
 import 'package:app_routine/core/services/supabase_service.dart';
 import 'package:app_routine/core/services/supabase_sync_service.dart';
 import 'package:flutter/material.dart';
@@ -124,6 +124,68 @@ void main() {
       );
       expect(skippedRoutine.isCurrentlySkipped, isTrue);
       expect(skippedRoutine.timeUntilNextFormatted, equals('Próximo disparo pausado'));
+    });
+
+    test('Diferenciação clara entre Alarme (celular) e Lembrete (smartwatch)', () {
+      final now = DateTime.now();
+      final alarme = RoutineModel(
+        id: 101,
+        title: 'Despertar',
+        body: 'Acordar para trabalhar',
+        type: RoutineType.punctual,
+        hour: (now.hour + 1) % 24,
+        minute: now.minute,
+        isAlarm: true,
+        punctualDate: now.add(const Duration(hours: 1)),
+        createdAt: now,
+      );
+
+      final lembrete = RoutineModel(
+        id: 102,
+        title: 'Beber Água',
+        body: 'Hidratação rápida',
+        type: RoutineType.punctual,
+        hour: (now.hour + 1) % 24,
+        minute: now.minute,
+        isAlarm: false,
+        punctualDate: now.add(const Duration(hours: 1)),
+        createdAt: now,
+      );
+
+      expect(alarme.isAlarm, isTrue);
+      expect(alarme.isReminder, isFalse);
+      expect(alarme.alertTypeLabel, equals('Alarme'));
+      expect(alarme.timeUntilNextFormatted, contains('Toca em'));
+
+      expect(lembrete.isAlarm, isFalse);
+      expect(lembrete.isReminder, isTrue);
+      expect(lembrete.alertTypeLabel, equals('Lembrete'));
+      expect(lembrete.timeUntilNextFormatted, contains('Notifica em'));
+
+      // Teste de desativação
+      final lembreteInativo = lembrete.copyWith(isActive: false);
+      expect(lembreteInativo.timeUntilNextFormatted, equals('Lembrete desativado'));
+
+      final alarmeInativo = alarme.copyWith(isActive: false);
+      expect(alarmeInativo.timeUntilNextFormatted, equals('Alarme desativado'));
+
+      // Teste de desserialização a partir do formato do Supabase (is_alarm)
+      final jsonSupabase = {
+        'id': 200,
+        'title': 'Remédio',
+        'body': 'Vitamina C',
+        'type': 'recurring',
+        'category': 'health',
+        'hour': 8,
+        'minute': 0,
+        'weekdays': [1, 2],
+        'is_alarm': false,
+        'is_active': true,
+      };
+      final parsed = RoutineModel.fromJson(jsonSupabase);
+      expect(parsed.isAlarm, isFalse);
+      expect(parsed.isReminder, isTrue);
+      expect(parsed.alertTypeLabel, equals('Lembrete'));
     });
   });
 

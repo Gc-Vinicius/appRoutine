@@ -27,6 +27,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   late RoutineCategory _selectedCategory;
   String? _customCategoryName;
   String? _customCategoryEmoji;
+  late bool _isAlarm;
   late TimeOfDay _selectedTime;
   late List<int> _selectedWeekdays;
   late DateTime _selectedPunctualDate;
@@ -46,6 +47,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _selectedCategory = toEdit.category;
       _customCategoryName = toEdit.customCategoryName;
       _customCategoryEmoji = toEdit.customCategoryEmoji;
+      _isAlarm = toEdit.isAlarm;
       _selectedTime = TimeOfDay(hour: toEdit.hour, minute: toEdit.minute);
       _selectedWeekdays = List<int>.from(toEdit.weekdays);
       _selectedPunctualDate = toEdit.punctualDate ?? DateTime.now();
@@ -57,6 +59,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _selectedCategory = RoutineCategory.general;
       _customCategoryName = null;
       _customCategoryEmoji = null;
+      _isAlarm = true;
       _selectedTime = TimeOfDay.now();
       _selectedWeekdays = [1, 2, 3, 4, 5]; // Seg a Sex padrão
       _selectedPunctualDate = DateTime.now();
@@ -284,6 +287,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       windowEndHour: _selectedType == RoutineType.periodic ? 20 : null,
       punctualDate: punctualDate,
       skippedUntil: widget.routineToEdit?.skippedUntil,
+      isAlarm: _isAlarm,
       isActive: widget.routineToEdit?.isActive ?? true,
       createdAt: widget.routineToEdit?.createdAt ?? DateTime.now(),
     );
@@ -296,7 +300,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
         SnackBar(
           content: Text(_isEditing
               ? 'Rotina atualizada! $timeInfo.'
-              : 'Alarme salvo com sucesso! $timeInfo.'),
+              : '${_isAlarm ? "Alarme" : "Lembrete"} salvo com sucesso! $timeInfo.'),
           duration: const Duration(seconds: 4),
         ),
       );
@@ -314,7 +318,9 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Editar Alarme de Rotina' : 'Novo Alarme de Rotina'),
+        title: Text(_isEditing
+            ? (_isAlarm ? 'Editar Alarme' : 'Editar Lembrete')
+            : (_isAlarm ? 'Novo Alarme' : 'Novo Lembrete')),
         actions: [
           if (_isEditing)
             IconButton(
@@ -341,6 +347,114 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // SELETOR: ALARME (Mobile) vs LEMBRETE (Smartwatch)
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: palette.border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _isAlarm = true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _isAlarm ? palette.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.alarm,
+                              size: 16,
+                              color: _isAlarm ? palette.onPrimary : palette.textSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '⏰ Alarme',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: _isAlarm ? palette.onPrimary : palette.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _isAlarm = false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: !_isAlarm ? palette.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.notifications_active_outlined,
+                              size: 16,
+                              color: !_isAlarm ? palette.onPrimary : palette.textSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '🔔 Lembrete',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: !_isAlarm ? palette.onPrimary : palette.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Card informativo contextual
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: palette.surfaceVariant.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: palette.border, width: 0.6),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _isAlarm ? Icons.info_outline : Icons.watch_outlined,
+                    size: 16,
+                    color: palette.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _isAlarm
+                          ? 'Alarme: Toca som alto, fade-in e tela cheia de despertar no celular.'
+                          : 'Lembrete: Notificação pontual e vibração discreta no relógio.',
+                      style: TextStyle(fontSize: 11, color: palette.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // Seletor de Tipo (Segmented Control)
             Container(
               padding: const EdgeInsets.all(4),

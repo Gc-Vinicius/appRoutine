@@ -10,6 +10,16 @@ class AppConstants {
   static const String notificationChannelDescription =
       'Canal de notificação de máxima importância com som e vibração para espelhamento BLE no smartwatch.';
 
+  static const String alarmChannelId = 'app_routine_alarm_channel';
+  static const String alarmChannelName = 'Alarmes do Celular';
+  static const String alarmChannelDescription =
+      'Canal de alarme com som alto e tela cheia dedicado a despertar no celular.';
+
+  static const String reminderChannelId = 'app_routine_reminder_channel';
+  static const String reminderChannelName = 'Lembretes & Smartwatch';
+  static const String reminderChannelDescription =
+      'Canal de notificações pontuais e vibração discreta para espelhamento no smartwatch.';
+
   // Chaves de Preferência
   static const String prefSelectedTheme = 'selected_app_theme';
 
