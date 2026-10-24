@@ -1,5 +1,6 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/widgets.dart';
+import 'local_storage_service.dart';
 import 'notification_service.dart';
 import '../../features/routine/domain/routine_model.dart';
 
@@ -12,10 +13,24 @@ void alarmDispatchCallback(int id) async {
   try {
     final notifService = NotificationService();
     await notifService.initialize();
+
+    final routines = await LocalStorageService.loadRoutines();
+    RoutineModel? routine;
+    if (routines != null) {
+      try {
+        routine = routines.firstWhere((r) => r.id == id);
+      } catch (_) {}
+    }
+
+    final title = routine?.title ?? 'Hora da Rotina!';
+    final body = routine?.body ?? 'Alarme disparado no seu horário programado.';
+    final isAlarm = routine?.isAlarm ?? true;
+
     await notifService.showNotification(
       id: id,
-      title: 'Hora da Rotina!',
-      body: 'Alarme disparado no seu horário programado.',
+      title: title,
+      body: body,
+      isAlarm: isAlarm,
     );
   } catch (e) {
     debugPrint('[AlarmManager] Erro no callback de background: $e');

@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/routine_provider.dart';
+import '../../domain/routine_model.dart';
 import '../widgets/routine_card.dart';
 import '../widgets/live_clock_widget.dart';
 import 'create_routine_screen.dart';
@@ -8,6 +10,7 @@ import 'diagnostic_screen.dart';
 import 'sleep_calculator_screen.dart';
 import 'theme_selector_screen.dart';
 import 'timer_stopwatch_screen.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
@@ -21,6 +24,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   int _currentNavIndex = 0;
+  Timer? _foregroundAlarmTimer;
+  int? _lastFiredMinuteKey;
 
   @override
   void initState() {
@@ -33,10 +38,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       }
       ref.invalidate(permissionsProvider);
     });
+    _startForegroundAlarmWatcher();
+  }
+
+  void _startForegroundAlarmWatcher() {
+    _foregroundAlarmTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      _checkForegroundAlarms();
+    });
+  }
+
+  void _checkForegroundAlarms() {
+    if (NotificationService.isAlarmScreenOpen) return;
+
+    final now = DateTime.now();
+    final minuteKey = now.year * 100000000 + now.month * 1000000 + now.day * 10000 + now.hour * 100 + now.minute;
+    if (_lastFiredMinuteKey == minuteKey) return;
+
+    final routines = ref.read(routineListProvider);
+    for (final routine in routines) {
+      if (!routine.isActive || !routine.isAlarm || routine.isCurrentlySkipped) continue;
+
+      bool shouldRing = false;
+      if (routine.type == RoutineType.punctual) {
+        final pDate = routine.punctualDate ?? DateTime(now.year, now.month, now.day);
+        if (pDate.year == now.year &&
+            pDate.month == now.month &&
+            pDate.day == now.day &&
+            routine.hour == now.hour &&
+            routine.minute == now.minute) {
+          shouldRing = true;
+        }
+      } else if (routine.type == RoutineType.recurring) {
+        if (routine.weekdays.contains(now.weekday) &&
+            routine.hour == now.hour &&
+            routine.minute == now.minute) {
+          shouldRing = true;
+        }
+      } else if (routine.type == RoutineType.periodic) {
+        final interval = routine.intervalMinutes ?? 120;
+        final startH = routine.windowStartHour ?? 8;
+        final endH = routine.windowEndHour ?? 20;
+        final stepHours = (interval ~/ 60).clamp(1, 24);
+        if (now.hour >= startH &&
+            now.hour <= endH &&
+            (now.hour - startH) % stepHours == 0 &&
+            routine.minute == now.minute) {
+          shouldRing = true;
+        }
+      }
+
+      if (shouldRing) {
+        _lastFiredMinuteKey = minuteKey;
+        NotificationService().openAlarmScreenForId(
+          routine.id,
+          payload: routine.title,
+          explicitRoutine: routine,
+        );
+        break;
+      }
+    }
   }
 
   @override
   void dispose() {
+    _foregroundAlarmTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
