@@ -175,6 +175,42 @@ class RoutineCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // Badge: Alarme vs Lembrete
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: routine.isAlarm
+                          ? Colors.deepOrange.withValues(alpha: 0.15)
+                          : Colors.blueAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: routine.isAlarm
+                            ? Colors.deepOrangeAccent.withValues(alpha: 0.4)
+                            : Colors.blueAccent.withValues(alpha: 0.4),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          routine.isAlarm ? Icons.alarm : Icons.watch_outlined,
+                          size: 12,
+                          color: routine.isAlarm ? Colors.deepOrangeAccent : Colors.lightBlueAccent,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          routine.alertTypeLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: routine.isAlarm ? Colors.deepOrangeAccent : Colors.lightBlueAccent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   // Tag de Categoria com Emoji
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),

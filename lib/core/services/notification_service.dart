@@ -94,14 +94,18 @@ class NotificationService {
               category: RoutineCategory.general,
               hour: DateTime.now().hour,
               minute: DateTime.now().minute,
+              isAlarm: true,
               isActive: true,
               createdAt: DateTime.now(),
             );
-            nav.push(
-              MaterialPageRoute(
-                builder: (_) => AlarmRingingScreen(routine: target!),
-              ),
-            );
+            // Somente alarmes abrem a tela cheia de despertar. Lembretes apenas abrem o app.
+            if (target.isAlarm) {
+              nav.push(
+                MaterialPageRoute(
+                  builder: (_) => AlarmRingingScreen(routine: target!),
+                ),
+              );
+            }
           }
         }
       },
@@ -149,9 +153,29 @@ class NotificationService {
     return false;
   }
 
-  /// Cria o canal nativo de Alta Prioridade com som e vibração habilitados (RNF06)
+  /// Cria os canais nativos: Alarmes (máxima prioridade com tela cheia) e Lembretes (discreto para smartwatch)
   Future<void> _createHighPriorityChannel() async {
-    const androidChannel = AndroidNotificationChannel(
+    const alarmChannel = AndroidNotificationChannel(
+      AppConstants.alarmChannelId,
+      AppConstants.alarmChannelName,
+      description: AppConstants.alarmChannelDescription,
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
+    );
+
+    const reminderChannel = AndroidNotificationChannel(
+      AppConstants.reminderChannelId,
+      AppConstants.reminderChannelName,
+      description: AppConstants.reminderChannelDescription,
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
+    );
+
+    const legacyChannel = AndroidNotificationChannel(
       AppConstants.notificationChannelId,
       AppConstants.notificationChannelName,
       description: AppConstants.notificationChannelDescription,
@@ -161,40 +185,73 @@ class NotificationService {
       showBadge: true,
     );
 
-    await androidPlugin?.createNotificationChannel(androidChannel);
+    await androidPlugin?.createNotificationChannel(alarmChannel);
+    await androidPlugin?.createNotificationChannel(reminderChannel);
+    await androidPlugin?.createNotificationChannel(legacyChannel);
   }
 
-  NotificationDetails _buildNotificationDetails(String title, {bool allowSnooze = true, int snoozeMinutes = 10}) {
-    return NotificationDetails(
-      android: AndroidNotificationDetails(
-        AppConstants.notificationChannelId,
-        AppConstants.notificationChannelName,
-        channelDescription: AppConstants.notificationChannelDescription,
-        importance: Importance.max,
-        priority: Priority.high,
-        playSound: true,
-        enableVibration: true,
-        ticker: title,
-        category: AndroidNotificationCategory.alarm,
-        visibility: NotificationVisibility.public,
-        actions: allowSnooze
-            ? <AndroidNotificationAction>[
-                const AndroidNotificationAction(
-                  'action_done',
-                  'Concluir ✓',
-                  showsUserInterface: false,
-                  cancelNotification: true,
-                ),
-                AndroidNotificationAction(
-                  'action_snooze',
-                  'Soneca (+${snoozeMinutes}m)',
-                  showsUserInterface: true,
-                  cancelNotification: true,
-                ),
-              ]
-            : null,
-      ),
-    );
+  NotificationDetails _buildNotificationDetails(
+    String title, {
+    bool isAlarm = true,
+    bool allowSnooze = true,
+    int snoozeMinutes = 10,
+  }) {
+    if (isAlarm) {
+      return NotificationDetails(
+        android: AndroidNotificationDetails(
+          AppConstants.alarmChannelId,
+          AppConstants.alarmChannelName,
+          channelDescription: AppConstants.alarmChannelDescription,
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          ticker: title,
+          category: AndroidNotificationCategory.alarm,
+          visibility: NotificationVisibility.public,
+          actions: allowSnooze
+              ? <AndroidNotificationAction>[
+                  const AndroidNotificationAction(
+                    'action_done',
+                    'Concluir ✓',
+                    showsUserInterface: false,
+                    cancelNotification: true,
+                  ),
+                  AndroidNotificationAction(
+                    'action_snooze',
+                    'Soneca (+${snoozeMinutes}m)',
+                    showsUserInterface: true,
+                    cancelNotification: true,
+                  ),
+                ]
+              : null,
+        ),
+      );
+    } else {
+      // Lembrete: formato otimizado para o relógio BLE e notificação heads-up limpa
+      return NotificationDetails(
+        android: AndroidNotificationDetails(
+          AppConstants.reminderChannelId,
+          AppConstants.reminderChannelName,
+          channelDescription: AppConstants.reminderChannelDescription,
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          ticker: title,
+          category: AndroidNotificationCategory.reminder,
+          visibility: NotificationVisibility.public,
+          actions: const <AndroidNotificationAction>[
+            AndroidNotificationAction(
+              'action_done',
+              'Concluir ✓',
+              showsUserInterface: false,
+              cancelNotification: true,
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   /// Dispara um alarme de soneca (+X minutos)
@@ -248,7 +305,12 @@ class NotificationService {
     final now = DateTime.now();
     final tzNow = tz.TZDateTime.now(tz.local);
     final settings = await LocalStorageService.loadAlarmSettings();
-    final details = _buildNotificationDetails(routine.title, snoozeMinutes: settings.snoozeDurationMinutes);
+    final details = _buildNotificationDetails(
+      routine.title,
+      isAlarm: routine.isAlarm,
+      allowSnooze: routine.isAlarm,
+      snoozeMinutes: settings.snoozeDurationMinutes,
+    );
 
     final canExact = await canScheduleExact();
     final scheduleMode = canExact

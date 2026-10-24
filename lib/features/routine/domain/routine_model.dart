@@ -65,6 +65,7 @@ class RoutineModel {
   final int? windowEndHour;
   final DateTime? punctualDate;
   final DateTime? skippedUntil; // Data/hora até quando o próximo alarme foi pulado
+  final bool isAlarm; // true = Alarme (celular, som, tela cheia), false = Lembrete (smartwatch, notificação limpa)
   final bool isActive;
   final DateTime createdAt;
 
@@ -84,9 +85,13 @@ class RoutineModel {
     this.windowEndHour,
     this.punctualDate,
     this.skippedUntil,
+    this.isAlarm = true,
     this.isActive = true,
     required this.createdAt,
   });
+
+  bool get isReminder => !isAlarm;
+  String get alertTypeLabel => isAlarm ? 'Alarme' : 'Lembrete';
 
   String get displayCategoryName => customCategoryName ?? category.label;
   String get displayCategoryEmoji => customCategoryEmoji ?? category.emoji;
@@ -108,6 +113,7 @@ class RoutineModel {
     int? windowEndHour,
     DateTime? punctualDate,
     DateTime? skippedUntil,
+    bool? isAlarm,
     bool? isActive,
     DateTime? createdAt,
   }) {
@@ -131,6 +137,7 @@ class RoutineModel {
       windowEndHour: windowEndHour ?? this.windowEndHour,
       punctualDate: punctualDate ?? this.punctualDate,
       skippedUntil: skippedUntil ?? this.skippedUntil,
+      isAlarm: isAlarm ?? this.isAlarm,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -153,6 +160,7 @@ class RoutineModel {
       'windowEndHour': windowEndHour,
       'punctualDate': punctualDate?.toIso8601String(),
       'skippedUntil': skippedUntil?.toIso8601String(),
+      'isAlarm': isAlarm,
       'isActive': isActive,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -185,6 +193,7 @@ class RoutineModel {
       skippedUntil: json['skippedUntil'] != null
           ? DateTime.tryParse(json['skippedUntil'] as String)
           : null,
+      isAlarm: (json['isAlarm'] as bool?) ?? (json['is_alarm'] as bool?) ?? true,
       isActive: json['isActive'] as bool? ?? true,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
@@ -234,25 +243,31 @@ class RoutineModel {
         return null;
 
       case RoutineType.periodic:
+        final interval = intervalMinutes ?? 120;
         final startH = windowStartHour ?? 8;
         final endH = windowEndHour ?? 20;
-        final interval = intervalMinutes ?? 120;
-        DateTime candidate = DateTime(now.year, now.month, now.day, startH, 0);
-        while (candidate.hour < endH || (candidate.hour == endH && candidate.minute == 0)) {
-          if (candidate.isAfter(now)) {
-            if (!isCurrentlySkipped || candidate.isAfter(skippedUntil!)) {
-              return candidate;
+
+        DateTime slot = DateTime(now.year, now.month, now.day, startH, 0);
+        final endSlot = DateTime(now.year, now.month, now.day, endH, 0);
+
+        while (slot.isBefore(endSlot) || slot.isAtSameMomentAs(endSlot)) {
+          if (slot.isAfter(now)) {
+            if (isCurrentlySkipped && !slot.isAfter(skippedUntil!)) {
+              slot = slot.add(Duration(minutes: interval));
+              continue;
             }
+            return slot;
           }
-          candidate = candidate.add(Duration(minutes: interval));
+          slot = slot.add(Duration(minutes: interval));
         }
+
         final tomorrow = now.add(const Duration(days: 1));
         return DateTime(tomorrow.year, tomorrow.month, tomorrow.day, startH, 0);
     }
   }
 
   String get timeUntilNextFormatted {
-    if (!isActive) return 'Alarme desativado';
+    if (!isActive) return isAlarm ? 'Alarme desativado' : 'Lembrete desativado';
     if (isCurrentlySkipped) return 'Próximo disparo pausado';
 
     final next = nextOccurrence;
@@ -263,17 +278,18 @@ class RoutineModel {
 
     final hours = diff.inHours;
     final minutes = diff.inMinutes % 60;
+    final verb = isAlarm ? 'Toca' : 'Notifica';
 
     if (hours == 0) {
-      return 'Toca em ${minutes == 0 ? "menos de 1" : minutes} min';
+      return '$verb em ${minutes == 0 ? "menos de 1" : minutes} min';
     } else if (hours < 24) {
       if (minutes == 0) {
-        return 'Toca em ${hours}h';
+        return '$verb em ${hours}h';
       }
-      return 'Toca em ${hours}h e ${minutes}min';
+      return '$verb em ${hours}h e ${minutes}min';
     } else {
       final days = diff.inDays;
-      return 'Toca em ${days}d e ${hours % 24}h';
+      return '$verb em ${days}d e ${hours % 24}h';
     }
   }
 
