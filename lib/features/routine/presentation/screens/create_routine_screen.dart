@@ -377,7 +377,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              '⏰ Alarme',
+                              'Alarme',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -409,7 +409,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              '🔔 Lembrete',
+                              'Lembrete',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
