@@ -187,6 +187,66 @@ void main() {
       expect(parsed.isReminder, isTrue);
       expect(parsed.alertTypeLabel, equals('Lembrete'));
     });
+
+    test('Lembretes de visualização única (isOneShot) - modelo, serialização e getters', () {
+      final now = DateTime.now();
+      final oneShotReminder = RoutineModel(
+        id: 301,
+        title: 'Comprar Pão',
+        body: 'Passar na padaria na volta',
+        type: RoutineType.punctual,
+        hour: (now.hour + 1) % 24,
+        minute: now.minute,
+        isAlarm: false,
+        isOneShot: true,
+        punctualDate: now.add(const Duration(hours: 1)),
+        createdAt: now,
+      );
+
+      expect(oneShotReminder.isAlarm, isFalse);
+      expect(oneShotReminder.isReminder, isTrue);
+      expect(oneShotReminder.isOneShot, isTrue);
+      expect(oneShotReminder.isOneShotReminder, isTrue);
+      expect(oneShotReminder.hasPassed, isFalse);
+      expect(oneShotReminder.typeLabel, equals('PONTUAL • USO ÚNICO'));
+      expect(oneShotReminder.recurrenceSubtitle, contains('(Uso único)'));
+
+      // Teste de serialização toJson e fromJson
+      final json = oneShotReminder.toJson();
+      expect(json['isOneShot'], isTrue);
+      expect(json['isAlarm'], isFalse);
+
+      final fromJson = RoutineModel.fromJson(json);
+      expect(fromJson.isOneShot, isTrue);
+      expect(fromJson.isOneShotReminder, isTrue);
+
+      // Teste com formato do Supabase (is_one_shot)
+      final supabaseJson = {
+        'id': 302,
+        'title': 'Recado Rápido',
+        'body': 'Mensagem temporária',
+        'type': 'punctual',
+        'category': 'general',
+        'hour': 12,
+        'minute': 0,
+        'is_alarm': false,
+        'is_one_shot': true,
+        'is_active': true,
+      };
+      final parsedSupabase = RoutineModel.fromJson(supabaseJson);
+      expect(parsedSupabase.isOneShot, isTrue);
+      expect(parsedSupabase.isOneShotReminder, isTrue);
+
+      // Se for Alarme com isOneShot marcado, isOneShotReminder deve ser falso (exclusivo para lembretes)
+      final oneShotAlarm = oneShotReminder.copyWith(isAlarm: true);
+      expect(oneShotAlarm.isOneShotReminder, isFalse);
+
+      // Teste do hasPassed para datas que já passaram
+      final pastReminder = oneShotReminder.copyWith(
+        punctualDate: now.subtract(const Duration(minutes: 5)),
+      );
+      expect(pastReminder.hasPassed, isTrue);
+    });
   });
 
   group('Domain Items Tests', () {

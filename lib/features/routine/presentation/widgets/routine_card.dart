@@ -210,6 +210,39 @@ class RoutineCard extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  if (routine.isOneShot) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.purpleAccent.withValues(alpha: 0.5),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.filter_1_rounded,
+                            size: 11,
+                            color: Colors.purpleAccent,
+                          ),
+                          SizedBox(width: 3),
+                          Text(
+                            'Uso Único',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purpleAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 6),
                   // Tag de Categoria com Emoji
                   Container(

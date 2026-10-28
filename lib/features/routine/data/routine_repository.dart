@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import '../domain/routine_model.dart';
+import '../../../core/services/supabase_service.dart';
 import '../../../core/services/alarm_scheduler_service.dart';
 import '../../../core/services/local_storage_service.dart';
 
@@ -9,6 +11,7 @@ abstract class RoutineRepository {
   Future<void> toggleRoutineActive(int id, bool isActive);
   Future<void> toggleSkipNext(int id);
   Future<void> reloadFromStorage();
+  Future<List<RoutineModel>> cleanExpiredOneShotRoutines();
 }
 
 class LocalRoutineRepository implements RoutineRepository {
@@ -31,6 +34,22 @@ class LocalRoutineRepository implements RoutineRepository {
       await LocalStorageService.saveRoutines(_cachedRoutines);
     } else {
       _cachedRoutines = [];
+      await LocalStorageService.saveRoutines(_cachedRoutines);
+    }
+    final expiredOnes = _cachedRoutines.where((r) => r.isOneShot && r.hasPassed).toList();
+    for (final r in expiredOnes) {
+      if (r.id != null) {
+        _cachedRoutines.removeWhere((item) => item.id == r.id);
+        _alarmScheduler.cancelAlarm(r.id!);
+        try {
+          final supabase = SupabaseService();
+          if (supabase.isAuthenticated) {
+            supabase.client?.from('rotinas').delete().eq('id', r.id!);
+          }
+        } catch (_) {}
+      }
+    }
+    if (expiredOnes.isNotEmpty) {
       await LocalStorageService.saveRoutines(_cachedRoutines);
     }
     _isInitialized = true;
@@ -85,6 +104,14 @@ class LocalRoutineRepository implements RoutineRepository {
   Future<void> deleteRoutine(int id) async {
     await _ensureInitialized();
     _cachedRoutines.removeWhere((r) => r.id == id);
+    try {
+      final supabase = SupabaseService();
+      if (supabase.isAuthenticated) {
+        supabase.client?.from('rotinas').delete().eq('id', id);
+      }
+    } catch (e) {
+      debugPrint('[RoutineRepository] Erro ao deletar rotina na nuvem: $e');
+    }
     await _alarmScheduler.cancelAlarm(id);
     await LocalStorageService.saveRoutines(_cachedRoutines);
   }
@@ -155,6 +182,20 @@ class LocalRoutineRepository implements RoutineRepository {
         }
       }
     }
+  }
+
+  @override
+  Future<List<RoutineModel>> cleanExpiredOneShotRoutines() async {
+    await _ensureInitialized();
+    final expired = _cachedRoutines.where((r) => r.isOneShot && r.hasPassed).toList();
+    if (expired.isEmpty) return [];
+
+    for (final r in expired) {
+      if (r.id != null) {
+        await deleteRoutine(r.id!);
+      }
+    }
+    return expired;
   }
 
   void _scheduleRoutineAlarm(RoutineModel routine) {

@@ -8,6 +8,7 @@ import 'local_storage_service.dart';
 import '../../main.dart';
 import '../../features/routine/domain/routine_model.dart';
 import '../../features/routine/presentation/screens/alarm_ringing_screen.dart';
+import '../../features/routine/data/routine_repository.dart';
 
 /// Serviço responsável por emitir notificações locais nativas com canal de alta prioridade.
 /// O app ponte do smartwatch (Haylou Fun) intercepta estas notificações e as repassa ao pulso via BLE.
@@ -88,6 +89,9 @@ class NotificationService {
         final targetId = target?.id;
         if (targetId != null) {
           await LocalStorageService.toggleCheckinToday(targetId);
+          if (target != null && target.isOneShot) {
+            await LocalRoutineRepository().deleteRoutine(targetId);
+          }
         }
       }
     } else if (response.actionId == 'action_snooze' || response.actionId == 'action_snooze_10') {
@@ -102,6 +106,22 @@ class NotificationService {
       );
     } else {
       // Usuário tocou na notificação principal ou SO disparou o fullScreenIntent
+      if (response.id != null) {
+        final routines = await LocalStorageService.loadRoutines();
+        if (routines != null) {
+          final target = routines.cast<RoutineModel?>().firstWhere(
+            (r) =>
+                r?.id == response.id ||
+                (r != null &&
+                    (response.id! ~/ 10 == r.id ||
+                        response.id! ~/ 100 == r.id)),
+            orElse: () => null,
+          );
+          if (target != null && target.isOneShot && target.id != null) {
+            await LocalRoutineRepository().deleteRoutine(target.id!);
+          }
+        }
+      }
       await openAlarmScreenForId(response.id, payload: response.payload);
     }
   }
