@@ -35,6 +35,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       final perms = await PermissionService().checkAllPermissions();
       if (!perms.hasNotification) {
         await PermissionService().requestNotificationPermission();
+      final deleted = await ref.read(routineListProvider.notifier).cleanExpiredOneShotRoutines();
+      if (deleted.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              deleted.length == 1
+                  ? 'Lembrete de visualização única "${deleted.first.title}" foi removido.'
+                  : '${deleted.length} lembretes de visualização única foram removidos.',
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
       }
       ref.invalidate(permissionsProvider);
     });
@@ -56,7 +69,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
     final routines = ref.read(routineListProvider);
     for (final routine in routines) {
-      if (!routine.isActive || !routine.isAlarm || routine.isCurrentlySkipped) continue;
+      if (!routine.isActive || routine.isCurrentlySkipped) continue;
+      if (!routine.isAlarm && !routine.isOneShot) continue;
 
       bool shouldRing = false;
       if (routine.type == RoutineType.punctual) {
@@ -89,11 +103,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
       if (shouldRing) {
         _lastFiredMinuteKey = minuteKey;
-        NotificationService().openAlarmScreenForId(
-          routine.id,
-          payload: routine.title,
-          explicitRoutine: routine,
-        );
+        if (routine.isAlarm) {
+          NotificationService().openAlarmScreenForId(
+            routine.id,
+            payload: routine.title,
+            explicitRoutine: routine,
+          );
+        } else if (routine.isOneShot) {
+          NotificationService().showNotification(
+            id: routine.id ?? 9999,
+            title: routine.title,
+            body: routine.body,
+            isAlarm: false,
+          );
+          ref.read(routineListProvider.notifier).deleteRoutine(routine.id!);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Lembrete de visualização única "${routine.title}" foi concluído e removido.'),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
         break;
       }
     }
@@ -110,6 +142,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.invalidate(permissionsProvider);
+      ref.read(routineListProvider.notifier).cleanExpiredOneShotRoutines();
     }
   }
 

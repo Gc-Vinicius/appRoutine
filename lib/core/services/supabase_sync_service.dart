@@ -80,6 +80,7 @@ class SupabaseSyncService {
             'punctual_date': r.punctualDate?.toUtc().toIso8601String(),
             'skipped_until': r.skippedUntil?.toUtc().toIso8601String(),
             'is_alarm': r.isAlarm,
+            'is_one_shot': r.isOneShot,
             'is_active': r.isActive,
             'created_at': r.createdAt.toUtc().toIso8601String(),
             'updated_at': nowIso,
@@ -138,6 +139,7 @@ class SupabaseSyncService {
                     ? DateTime.parse(row['skipped_until'] as String)
                     : null,
                 isAlarm: (row['is_alarm'] as bool?) ?? true,
+                isOneShot: (row['is_one_shot'] as bool?) ?? false,
                 isActive: (row['is_active'] as bool?) ?? true,
                 createdAt: DateTime.parse(row['created_at'] as String),
               ),

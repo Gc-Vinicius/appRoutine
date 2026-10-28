@@ -43,6 +43,14 @@ class RoutineListNotifier extends StateNotifier<List<RoutineModel>> {
     await loadRoutines();
   }
 
+  Future<List<RoutineModel>> cleanExpiredOneShotRoutines() async {
+    final deleted = await _repository.cleanExpiredOneShotRoutines();
+    if (deleted.isNotEmpty) {
+      await loadRoutines();
+    }
+    return deleted;
+  }
+
   Future<void> reloadFromStorage() async {
     await _repository.reloadFromStorage();
     await loadRoutines();

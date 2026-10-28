@@ -66,6 +66,7 @@ class RoutineModel {
   final DateTime? punctualDate;
   final DateTime? skippedUntil; // Data/hora até quando o próximo alarme foi pulado
   final bool isAlarm; // true = Alarme (celular, som, tela cheia), false = Lembrete (smartwatch, notificação limpa)
+  final bool isOneShot; // true = Lembrete de visualização única (autodeleta após visualização/disparo)
   final bool isActive;
   final DateTime createdAt;
 
@@ -86,11 +87,13 @@ class RoutineModel {
     this.punctualDate,
     this.skippedUntil,
     this.isAlarm = true,
+    this.isOneShot = false,
     this.isActive = true,
     required this.createdAt,
   });
 
   bool get isReminder => !isAlarm;
+  bool get isOneShotReminder => isReminder && isOneShot;
   String get alertTypeLabel => isAlarm ? 'Alarme' : 'Lembrete';
 
   String get displayCategoryName => customCategoryName ?? category.label;
@@ -114,6 +117,7 @@ class RoutineModel {
     DateTime? punctualDate,
     DateTime? skippedUntil,
     bool? isAlarm,
+    bool? isOneShot,
     bool? isActive,
     DateTime? createdAt,
   }) {
@@ -138,6 +142,7 @@ class RoutineModel {
       punctualDate: punctualDate ?? this.punctualDate,
       skippedUntil: skippedUntil ?? this.skippedUntil,
       isAlarm: isAlarm ?? this.isAlarm,
+      isOneShot: isOneShot ?? this.isOneShot,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -161,6 +166,7 @@ class RoutineModel {
       'punctualDate': punctualDate?.toIso8601String(),
       'skippedUntil': skippedUntil?.toIso8601String(),
       'isAlarm': isAlarm,
+      'isOneShot': isOneShot,
       'isActive': isActive,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -194,11 +200,19 @@ class RoutineModel {
           ? DateTime.tryParse(json['skippedUntil'] as String)
           : null,
       isAlarm: (json['isAlarm'] as bool?) ?? (json['is_alarm'] as bool?) ?? true,
+      isOneShot: (json['isOneShot'] as bool?) ?? (json['is_one_shot'] as bool?) ?? false,
       isActive: json['isActive'] as bool? ?? true,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),
     );
+  }
+
+  bool get hasPassed {
+    if (type != RoutineType.punctual) return false;
+    final now = DateTime.now();
+    final target = punctualDate ?? DateTime(now.year, now.month, now.day, hour, minute);
+    return now.isAfter(target);
   }
 
   bool get isCurrentlySkipped {
@@ -306,7 +320,7 @@ class RoutineModel {
       case RoutineType.periodic:
         return 'PERIÓDICO';
       case RoutineType.punctual:
-        return 'PONTUAL';
+        return isOneShotReminder ? 'PONTUAL • USO ÚNICO' : 'PONTUAL';
     }
   }
 
@@ -332,7 +346,7 @@ class RoutineModel {
         if (punctualDate == null) return 'Data não definida';
         final d = punctualDate!.day.toString().padLeft(2, '0');
         final m = punctualDate!.month.toString().padLeft(2, '0');
-        return '$d/$m às $formattedTime';
+        return isOneShotReminder ? '$d/$m às $formattedTime (Uso único)' : '$d/$m às $formattedTime';
     }
   }
 }

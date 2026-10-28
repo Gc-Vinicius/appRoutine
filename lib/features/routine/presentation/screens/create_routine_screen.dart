@@ -32,6 +32,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   late List<int> _selectedWeekdays;
   late DateTime _selectedPunctualDate;
   int _intervalMinutes = 120; // 2 horas
+  bool _isOneShot = false;
 
   bool get _isEditing => widget.routineToEdit != null;
 
@@ -52,6 +53,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _selectedWeekdays = List<int>.from(toEdit.weekdays);
       _selectedPunctualDate = toEdit.punctualDate ?? DateTime.now();
       _intervalMinutes = toEdit.intervalMinutes ?? 120;
+      _isOneShot = toEdit.isOneShot;
     } else {
       _titleController.text = '';
       _bodyController.text = '';
@@ -63,6 +65,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       _selectedTime = TimeOfDay.now();
       _selectedWeekdays = [1, 2, 3, 4, 5]; // Seg a Sex padrão
       _selectedPunctualDate = DateTime.now();
+      _isOneShot = false;
       _intervalMinutes = 120;
     }
 
@@ -288,6 +291,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       punctualDate: punctualDate,
       skippedUntil: widget.routineToEdit?.skippedUntil,
       isAlarm: _isAlarm,
+      isOneShot: !_isAlarm && _selectedType == RoutineType.punctual ? _isOneShot : false,
       isActive: widget.routineToEdit?.isActive ?? true,
       createdAt: widget.routineToEdit?.createdAt ?? DateTime.now(),
     );
@@ -763,6 +767,107 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
                 ],
               ],
             ),
+            if (!_isAlarm && _selectedType == RoutineType.punctual) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: _isOneShot
+                      ? palette.primary.withValues(alpha: 0.12)
+                      : palette.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _isOneShot
+                        ? palette.primary.withValues(alpha: 0.6)
+                        : palette.border,
+                    width: _isOneShot ? 1.4 : 1.0,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _isOneShot
+                            ? palette.primary
+                            : palette.surfaceVariant,
+                        border: Border.all(
+                          color: _isOneShot ? palette.primary : palette.textMuted,
+                          width: 1.5,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '1',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: _isOneShot ? Colors.white : palette.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Visualização Única',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: palette.textPrimary,
+                                ),
+                              ),
+                              if (_isOneShot) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: palette.primary.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Autodeleção',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: palette.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'O lembrete é excluído automaticamente após você visualizar ou tocar na notificação.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: palette.textMuted,
+                              height: 1.25,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: _isOneShot,
+                      activeTrackColor: palette.primary,
+                      onChanged: (val) {
+                        setState(() {
+                          _isOneShot = val;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
 
             // Dias da Semana (Para Recorrente)
