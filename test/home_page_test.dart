@@ -232,5 +232,42 @@ void main() {
       expect(find.text('Calculadora de Sono'), findsOneWidget);
       expect(find.text('Rotinas & Alarmes'), findsOneWidget);
     });
+
+    testWidgets('HomeScreen notification button tap displays SnackBar', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      final notifBtn = find.byTooltip('Notificações');
+      expect(notifBtn, findsOneWidget);
+
+      await tester.tap(notifBtn);
+      await tester.pump();
+
+      expect(find.text('Histórico de notificações em breve.'), findsOneWidget);
+    });
+
+    testWidgets('HomeScreen avatar tap switches to Settings tab', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      final avatarFinder = find.byType(GestureKey);
+      expect(avatarFinder, findsOneWidget);
+
+      await tester.tap(avatarFinder);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Configurações'), findsWidgets);
+    });
   });
 }

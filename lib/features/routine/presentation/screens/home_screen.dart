@@ -412,7 +412,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 child: IconButton(
                   icon: Icon(Icons.notifications_outlined, color: palette.textMuted, size: 20),
                   padding: EdgeInsets.zero,
-                  onPressed: () => setState(() => _currentNavIndex = 3), // Ajustes/Diagnóstico
+                  tooltip: 'Notificações',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Histórico de notificações em breve.'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
                 ),
               ),
               if (hasPermissionWarning)
@@ -434,30 +443,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
           // Avatar com Chip de Ofensiva (Streak)
           GestureKey(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ThemeSelectorScreen()),
-              );
-            },
-            child: Column(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: palette.surfaceVariant,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: palette.border.withValues(alpha: 0.6)),
-                  ),
-                  child: ClipOval(
-                    child: (photoUrl != null && photoUrl.isNotEmpty)
-                        ? Image.network(
-                            photoUrl,
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(
+            onTap: () => setState(() => _currentNavIndex = 3),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: palette.surfaceVariant,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: palette.border.withValues(alpha: 0.6)),
+                    ),
+                    child: ClipOval(
+                      child: (photoUrl != null && photoUrl.isNotEmpty)
+                          ? Image.network(
+                              photoUrl,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Text(
+                                  userInitial,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: palette.primary,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Center(
                               child: Text(
                                 userInitial,
                                 style: TextStyle(
@@ -467,45 +487,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                 ),
                               ),
                             ),
-                          )
-                        : Center(
-                            child: Text(
-                              userInitial,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: palette.primary,
-                              ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${streakDays}d',
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
                             ),
                           ),
-                  ),
-                ),
-                Transform.translate(
-                  offset: const Offset(0, -6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${streakDays}d',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        const Icon(Icons.local_fire_department_rounded, size: 10, color: Colors.black),
-                      ],
+                          const SizedBox(width: 2),
+                          const Icon(Icons.local_fire_department_rounded, size: 10, color: Colors.black),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
