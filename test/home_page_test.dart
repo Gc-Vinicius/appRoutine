@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_routine/core/theme/app_colors.dart';
 import 'package:app_routine/features/routine/domain/routine_model.dart';
+import 'package:app_routine/features/routine/presentation/screens/calendar_screen.dart';
+import 'package:app_routine/features/routine/presentation/screens/home_screen.dart';
 import 'package:app_routine/features/routine/presentation/widgets/home_hero_card.dart';
 import 'package:app_routine/features/routine/presentation/widgets/home_metrics_dashboard.dart';
 import 'package:app_routine/features/routine/presentation/widgets/today_timeline_list.dart';
@@ -43,17 +45,17 @@ void main() {
       expect(find.text('Adiar 10m'), findsOneWidget);
     });
 
-    testWidgets('HomeMetricsDashboard calculates and displays metrics properly', (tester) async {
+    testWidgets('HomeMetricsDashboard calculates and displays metrics properly with dynamic fallbacks', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
             body: HomeMetricsDashboard(
               palette: palette,
-              completedToday: 4,
-              totalToday: 6,
-              currentStreak: 12,
-              recordStreak: 18,
-              focusTimeFormatted: '1h 45m',
+              completedToday: 0,
+              totalToday: 0,
+              currentStreak: 0,
+              recordStreak: 0,
+              focusTimeFormatted: '0m',
               focusMetaFormatted: 'Meta: 2h/dia',
             ),
           ),
@@ -61,15 +63,15 @@ void main() {
       );
 
       expect(find.text('PROGRESSO'), findsOneWidget);
-      expect(find.text('67%'), findsOneWidget);
-      expect(find.text('4 de 6 feitas'), findsOneWidget);
+      expect(find.text('0%'), findsOneWidget);
+      expect(find.text('Nenhuma hoje'), findsOneWidget);
 
       expect(find.text('OFENSIVA'), findsOneWidget);
-      expect(find.text('12 Dias'), findsOneWidget);
-      expect(find.text('Recorde: 18d'), findsOneWidget);
+      expect(find.text('0 Dias'), findsOneWidget);
+      expect(find.text('Recorde: 0d'), findsOneWidget);
 
       expect(find.text('TEMPO FOCO'), findsOneWidget);
-      expect(find.text('1h 45m'), findsOneWidget);
+      expect(find.text('0m'), findsOneWidget);
       expect(find.text('Meta: 2h/dia'), findsOneWidget);
     });
 
@@ -113,7 +115,7 @@ void main() {
       expect(find.text('A Seguir'), findsOneWidget);
     });
 
-    testWidgets('FloatingNavDock handles tab selection and FAB trigger', (tester) async {
+    testWidgets('FloatingNavDock handles tab selection and FAB trigger across 6 sections', (tester) async {
       int selectedIndex = 0;
       bool fabClicked = false;
 
@@ -132,16 +134,76 @@ void main() {
 
       expect(find.text('Home'), findsOneWidget);
       expect(find.text('Rotinas'), findsOneWidget);
+      expect(find.text('Calendário'), findsOneWidget);
       expect(find.text('Timer'), findsOneWidget);
       expect(find.text('Sono'), findsOneWidget);
+      expect(find.text('Ajustes'), findsOneWidget);
 
-      // Tap on Rotinas
-      await tester.tap(find.text('Rotinas'));
-      expect(selectedIndex, 1);
+      // Tap on Calendário (Aba 2)
+      await tester.tap(find.text('Calendário'));
+      expect(selectedIndex, 2);
+
+      // Tap on Ajustes (Aba 5)
+      await tester.tap(find.text('Ajustes'));
+      expect(selectedIndex, 5);
 
       // Tap on FAB (+)
       await tester.tap(find.byIcon(Icons.add_rounded));
       expect(fabClicked, true);
+    });
+
+    testWidgets('CalendarScreen renders roadmap preview and back navigation', (tester) async {
+      bool backNavigated = false;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: CalendarScreen(
+              onNavigateToHome: () => backNavigated = true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Calendário'), findsOneWidget);
+      expect(find.text('EM BREVE'), findsOneWidget);
+      expect(find.text('Gestão Visual no Calendário'), findsOneWidget);
+
+      await tester.tap(find.text('Voltar para o Início'));
+      expect(backNavigated, true);
+    });
+
+    testWidgets('FadeIndexedStack renders children and animates smoothly', (tester) async {
+      int currentIndex = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              return Scaffold(
+                body: FadeIndexedStack(
+                  index: currentIndex,
+                  children: const [
+                    Text('Tab 0 Content'),
+                    Text('Tab 1 Content'),
+                  ],
+                ),
+                floatingActionButton: FloatingActionButton(
+                  onPressed: () => setState(() => currentIndex = 1),
+                  child: const Icon(Icons.arrow_forward),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      expect(find.text('Tab 0 Content'), findsOneWidget);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump(); // Starts animation
+      await tester.pump(const Duration(milliseconds: 300)); // Finishes animation
+
+      expect(find.text('Tab 1 Content'), findsOneWidget);
     });
   });
 }

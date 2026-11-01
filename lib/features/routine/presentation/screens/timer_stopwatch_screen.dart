@@ -5,6 +5,7 @@ import '../../domain/timer_preset_item.dart';
 import '../../../../core/services/local_storage_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/theme/theme_provider.dart';
+import '../providers/routine_provider.dart';
 
 class TimerStopwatchScreen extends ConsumerStatefulWidget {
   const TimerStopwatchScreen({super.key});
@@ -94,6 +95,7 @@ class _TimerStopwatchScreenState extends ConsumerState<TimerStopwatchScreen>
   }
 
   Future<void> _onTimerFinished() async {
+    ref.read(focusTimeTodayProvider.notifier).addSeconds(_timerTotalSeconds);
     await NotificationService().showNotification(
       id: 777777,
       title: 'Tempo Esgotado! ⏱️',

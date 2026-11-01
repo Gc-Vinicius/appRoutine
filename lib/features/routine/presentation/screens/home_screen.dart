@@ -10,6 +10,7 @@ import '../widgets/home_metrics_dashboard.dart';
 import '../widgets/today_timeline_list.dart';
 import '../widgets/floating_nav_dock.dart';
 import 'create_routine_screen.dart';
+import 'calendar_screen.dart';
 import 'diagnostic_screen.dart';
 import 'sleep_calculator_screen.dart';
 import 'theme_selector_screen.dart';
@@ -162,20 +163,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       backgroundColor: palette.background,
       body: Stack(
         children: [
-          IndexedStack(
+          FadeIndexedStack(
             index: _currentNavIndex,
             children: [
               // Aba 0: Nova Home Page (Dashboard Proativo)
               _buildHomeDashboard(palette, allRoutines),
               // Aba 1: Lista Completa de Rotinas (com relógio e filtros)
               _buildRoutinesTab(palette, filteredRoutines, activeFilter),
-              // Aba 2: Timer & Cronômetro
+              // Aba 2: Calendário (Roadmap • Em Breve)
+              CalendarScreen(
+                onNavigateToHome: () => setState(() => _currentNavIndex = 0),
+              ),
+              // Aba 3: Timer & Cronômetro
               const TimerStopwatchScreen(),
-              // Aba 3: Calculadora de Sono
+              // Aba 4: Calculadora de Sono
               const SleepCalculatorScreen(),
-              // Aba 4: Seletor de Temas
-              const ThemeSelectorScreen(isEmbedded: true),
-              // Aba 5: Ajustes & Diagnóstico
+              // Aba 5: Ajustes & Configurações
               const DiagnosticScreen(isEmbedded: true),
             ],
           ),
@@ -217,8 +220,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final userName = (rawName != null && rawName.isNotEmpty) ? rawName : 'Vinicius';
     final userInitial = userName.isNotEmpty ? userName[0].toUpperCase() : 'V';
 
-    final streak = _calculateOverallStreak(ref, allRoutines);
-    final recordStreak = (streak > 18) ? streak : 18;
+    final streak = checkinNotifier.getOverallCurrentStreak();
+    final recordStreak = checkinNotifier.getOverallRecordStreak();
+
+    final focusSeconds = ref.watch(focusTimeTodayProvider);
+    final focusFormatted = _formatFocusDuration(focusSeconds);
+    final focusMeta = focusSeconds == 0 ? 'Meta: 2h/dia' : '${((focusSeconds / 7200) * 100).round()}% da meta';
 
     final permAsync = ref.watch(permissionsProvider);
     final hasWarning = permAsync.value != null &&
@@ -278,6 +285,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             totalToday: totalCount,
             currentStreak: streak,
             recordStreak: recordStreak,
+            focusTimeFormatted: focusFormatted,
+            focusMetaFormatted: focusMeta,
+            onTapFocus: () => setState(() => _currentNavIndex = 3),
           ),
 
           // 4. Linha do Tempo ("Rotinas de Hoje")
@@ -370,7 +380,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
           // Avatar com Chip de Ofensiva (Streak)
           GestureKey(
-            onTap: () => setState(() => _currentNavIndex = 4), // Temas
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ThemeSelectorScreen()),
+              );
+            },
             child: Column(
               children: [
                 Container(
@@ -474,19 +489,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     return closest;
   }
 
-  /// Cálculo da Maior Ofensiva
-  int _calculateOverallStreak(WidgetRef ref, List<RoutineModel> allRoutines) {
-    final notifier = ref.watch(habitCheckinProvider.notifier);
-    int maxStreak = 0;
-    for (final r in allRoutines) {
-      if (r.id != null) {
-        final summary = notifier.getSummary(r.id!);
-        if (summary.currentStreak > maxStreak) {
-          maxStreak = summary.currentStreak;
-        }
-      }
+
+  /// Formatação de Tempo de Foco
+  String _formatFocusDuration(int totalSeconds) {
+    if (totalSeconds <= 0) return '0m';
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    if (hours > 0) {
+      return '${hours}h ${minutes.toString().padLeft(2, '0')}m';
+    } else {
+      return '${minutes}m';
     }
-    return maxStreak > 0 ? maxStreak : 12;
   }
 
   /// Formatação de Data em Português
@@ -599,6 +612,79 @@ class GestureKey extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: child,
+    );
+  }
+}
+
+/// Pilha Indexada com Transição Animada Fluida (Fade + Slide Suave)
+class FadeIndexedStack extends StatefulWidget {
+  final int index;
+  final List<Widget> children;
+  final Duration duration;
+
+  const FadeIndexedStack({
+    super.key,
+    required this.index,
+    required this.children,
+    this.duration = const Duration(milliseconds: 240),
+  });
+
+  @override
+  State<FadeIndexedStack> createState() => _FadeIndexedStackState();
+}
+
+class _FadeIndexedStackState extends State<FadeIndexedStack>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: widget.duration,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.0, 0.02),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    ));
+    _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(FadeIndexedStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.index != oldWidget.index) {
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: IndexedStack(
+          index: widget.index,
+          children: widget.children,
+        ),
+      ),
     );
   }
 }

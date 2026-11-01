@@ -13,8 +13,10 @@ void main() {
     // Verifica elementos principais do novo Dashboard e FloatingNavDock
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Rotinas'), findsWidgets);
+    expect(find.text('Calendário'), findsOneWidget);
     expect(find.text('Timer'), findsOneWidget);
     expect(find.text('Sono'), findsOneWidget);
+    expect(find.text('Ajustes'), findsOneWidget);
     expect(find.text('Rotinas de Hoje'), findsOneWidget);
     expect(find.text('PROGRESSO'), findsOneWidget);
     expect(find.text('OFENSIVA'), findsOneWidget);

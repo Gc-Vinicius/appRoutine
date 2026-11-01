@@ -18,7 +18,7 @@ class FloatingNavDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
       height: 64,
       decoration: BoxDecoration(
         color: palette.surface,
@@ -38,6 +38,7 @@ class FloatingNavDock extends StatelessWidget {
         children: [
           Row(
             children: [
+              // Lado Esquerdo (3 itens)
               // Tab 0: Home
               Expanded(
                 child: _buildNavItem(
@@ -54,24 +55,41 @@ class FloatingNavDock extends StatelessWidget {
                   icon: Icons.alarm_rounded,
                 ),
               ),
-
-              // Espaço central reservado para o FAB elevado
-              const SizedBox(width: 56),
-
-              // Tab 2: Timer
+              // Tab 2: Calendário
               Expanded(
                 child: _buildNavItem(
                   index: 2,
+                  label: 'Calendário',
+                  icon: Icons.calendar_month_rounded,
+                ),
+              ),
+
+              // Espaço central reservado para o FAB elevado
+              const SizedBox(width: 48),
+
+              // Lado Direito (3 itens)
+              // Tab 3: Timer
+              Expanded(
+                child: _buildNavItem(
+                  index: 3,
                   label: 'Timer',
                   icon: Icons.timer_rounded,
                 ),
               ),
-              // Tab 3: Sono
+              // Tab 4: Sono
               Expanded(
                 child: _buildNavItem(
-                  index: 3,
+                  index: 4,
                   label: 'Sono',
                   icon: Icons.nightlight_round,
+                ),
+              ),
+              // Tab 5: Ajustes / Configurações
+              Expanded(
+                child: _buildNavItem(
+                  index: 5,
+                  label: 'Ajustes',
+                  icon: Icons.settings_rounded,
                 ),
               ),
             ],
@@ -82,9 +100,10 @@ class FloatingNavDock extends StatelessWidget {
             top: -10,
             child: GestureDetector(
               onTap: onAddPressed,
+              behavior: HitTestBehavior.opaque,
               child: Container(
-                width: 52,
-                height: 52,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   color: palette.primary,
                   shape: BoxShape.circle,
@@ -100,7 +119,7 @@ class FloatingNavDock extends StatelessWidget {
                 child: Icon(
                   Icons.add_rounded,
                   color: palette.onPrimary,
-                  size: 28,
+                  size: 26,
                 ),
               ),
             ),
@@ -120,18 +139,22 @@ class FloatingNavDock extends StatelessWidget {
 
     return InkWell(
       onTap: () => onIndexChanged(index),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 20, color: color),
+          Icon(icon, size: 19, color: color),
           const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: color,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: color,
+              ),
+              maxLines: 1,
             ),
           ),
           if (isSelected)
