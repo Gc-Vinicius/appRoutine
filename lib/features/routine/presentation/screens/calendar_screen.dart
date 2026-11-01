@@ -5,8 +5,13 @@ import '../../../../core/theme/theme_provider.dart';
 
 class CalendarScreen extends ConsumerWidget {
   final VoidCallback? onNavigateToHome;
+  final VoidCallback? onMenuPressed;
 
-  const CalendarScreen({super.key, this.onNavigateToHome});
+  const CalendarScreen({
+    super.key,
+    this.onNavigateToHome,
+    this.onMenuPressed,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,30 +33,49 @@ class CalendarScreen extends ConsumerWidget {
           children: [
             // Header
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Calendário',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: palette.textPrimary,
-                        letterSpacing: -0.5,
-                      ),
+                if (onMenuPressed != null) ...[
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: palette.surfaceVariant,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: palette.border.withValues(alpha: 0.6)),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$monthName ${now.year}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: palette.textMuted,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    child: IconButton(
+                      icon: Icon(Icons.menu_rounded, color: palette.textPrimary, size: 22),
+                      padding: EdgeInsets.zero,
+                      tooltip: 'Menu',
+                      onPressed: onMenuPressed,
                     ),
-                  ],
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Calendário',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: palette.textPrimary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$monthName ${now.year}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: palette.textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

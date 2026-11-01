@@ -11,6 +11,7 @@ import '../widgets/today_timeline_list.dart';
 import '../widgets/floating_nav_dock.dart';
 import 'create_routine_screen.dart';
 import 'calendar_screen.dart';
+import 'auth_screen.dart';
 import 'diagnostic_screen.dart';
 import 'sleep_calculator_screen.dart';
 import 'theme_selector_screen.dart';
@@ -29,6 +30,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _currentNavIndex = 0;
   Timer? _foregroundAlarmTimer;
   int? _lastFiredMinuteKey;
@@ -159,27 +161,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final filteredRoutines = ref.watch(filteredRoutinesProvider);
     final activeFilter = ref.watch(routineFilterProvider);
 
+    final user = ref.watch(currentUserProvider);
+    final profile = ref.watch(userProfileProvider).value;
+    final rawName = profile?.nome;
+    final userName = (rawName != null && rawName.isNotEmpty)
+        ? rawName
+        : (user?.userMetadata?['name'] as String? ?? user?.email?.split('@').first ?? 'Vinicius');
+    final userInitial = userName.isNotEmpty ? userName[0].toUpperCase() : 'V';
+    final photoUrl = profile?.fotoUrl ?? user?.userMetadata?['avatar_url'] as String?;
+    final userEmail = user?.email;
+
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: palette.background,
+      drawer: _buildAppDrawer(
+        palette: palette,
+        userName: userName,
+        photoUrl: photoUrl,
+        userInitial: userInitial,
+        userEmail: userEmail,
+      ),
       body: Stack(
         children: [
           FadeIndexedStack(
             index: _currentNavIndex,
             children: [
-              // Aba 0: Nova Home Page (Dashboard Proativo)
-              _buildHomeDashboard(palette, allRoutines),
+              // Aba 0: Home (Dashboard Proativo)
+              _buildHomeDashboard(palette, allRoutines, photoUrl),
               // Aba 1: Lista Completa de Rotinas (com relógio e filtros)
               _buildRoutinesTab(palette, filteredRoutines, activeFilter),
               // Aba 2: Calendário (Roadmap • Em Breve)
               CalendarScreen(
                 onNavigateToHome: () => setState(() => _currentNavIndex = 0),
+                onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
               ),
-              // Aba 3: Timer & Cronômetro
-              const TimerStopwatchScreen(),
-              // Aba 4: Calculadora de Sono
-              const SleepCalculatorScreen(),
-              // Aba 5: Ajustes & Configurações
-              const DiagnosticScreen(isEmbedded: true),
+              // Aba 3: Ajustes & Configurações
+              DiagnosticScreen(
+                isEmbedded: true,
+                onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              ),
             ],
           ),
 
@@ -206,7 +226,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 
   /// Dashboard Proativo da Nova Home Page
-  Widget _buildHomeDashboard(AppPaletteData palette, List<RoutineModel> allRoutines) {
+  Widget _buildHomeDashboard(AppPaletteData palette, List<RoutineModel> allRoutines, String? photoUrl) {
     final now = DateTime.now();
     final todayRoutines = _getTodayRoutines(allRoutines);
     final nextRoutine = _getNextRoutine(allRoutines);
@@ -215,9 +235,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final completedCount = todayRoutines.where((r) => checkinNotifier.isCompletedToday(r.id ?? 0)).length;
     final totalCount = todayRoutines.length;
 
+    final user = ref.watch(currentUserProvider);
     final profile = ref.watch(userProfileProvider).value;
     final rawName = profile?.nome;
-    final userName = (rawName != null && rawName.isNotEmpty) ? rawName : 'Vinicius';
+    final userName = (rawName != null && rawName.isNotEmpty)
+        ? rawName
+        : (user?.userMetadata?['name'] as String? ?? user?.email?.split('@').first ?? 'Vinicius');
     final userInitial = userName.isNotEmpty ? userName[0].toUpperCase() : 'V';
 
     final streak = checkinNotifier.getOverallCurrentStreak();
@@ -236,16 +259,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       child: ListView(
         padding: const EdgeInsets.only(bottom: 96),
         children: [
-          // 1. Header Contextual
+          // 1. Header Contextual (com botão Hambúrguer e Foto real)
           _buildHeader(
             palette: palette,
             userName: userName,
             userInitial: userInitial,
+            photoUrl: photoUrl,
             dateFormatted: _formatCurrentDate(now),
             completedToday: completedCount,
             totalToday: totalCount,
             streakDays: streak,
             hasPermissionWarning: hasWarning,
+            onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
           ),
 
           // Banner de Alerta de Permissões (se necessário)
@@ -287,7 +312,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             recordStreak: recordStreak,
             focusTimeFormatted: focusFormatted,
             focusMetaFormatted: focusMeta,
-            onTapFocus: () => setState(() => _currentNavIndex = 3),
+            onTapFocus: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TimerStopwatchScreen()),
+              );
+            },
           ),
 
           // 4. Linha do Tempo ("Rotinas de Hoje")
@@ -301,22 +331,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     );
   }
 
-  /// Header Contextual com Saudação, Notificações e Avatar com Ofensiva
+  /// Header Contextual com Botão Hambúrguer, Saudação, Notificações e Avatar com Foto Real
   Widget _buildHeader({
     required AppPaletteData palette,
     required String userName,
     required String userInitial,
+    required String? photoUrl,
     required String dateFormatted,
     required int completedToday,
     required int totalToday,
     required int streakDays,
     required bool hasPermissionWarning,
+    required VoidCallback onOpenDrawer,
   }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Botão Hambúrguer
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: palette.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: palette.border.withValues(alpha: 0.6)),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.menu_rounded, color: palette.textPrimary, size: 22),
+              padding: EdgeInsets.zero,
+              tooltip: 'Menu',
+              onPressed: onOpenDrawer,
+            ),
+          ),
+          const SizedBox(width: 12),
+
           // Saudação e Resumo do Dia
           Expanded(
             child: Column(
@@ -325,20 +375,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 Text(
                   'Olá, $userName',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: palette.textPrimary,
                     letterSpacing: -0.5,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
-                  '$dateFormatted • $completedToday/$totalToday rotinas feitas',
+                  '$dateFormatted • $completedToday/$totalToday feitas',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: palette.textMuted,
                     fontWeight: FontWeight.w500,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -358,7 +412,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 child: IconButton(
                   icon: Icon(Icons.notifications_outlined, color: palette.textMuted, size: 20),
                   padding: EdgeInsets.zero,
-                  onPressed: () => setState(() => _currentNavIndex = 5), // Ajustes/Diagnóstico
+                  onPressed: () => setState(() => _currentNavIndex = 3), // Ajustes/Diagnóstico
                 ),
               ),
               if (hasPermissionWarning)
@@ -392,18 +446,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: palette.primary,
+                    color: palette.surfaceVariant,
                     shape: BoxShape.circle,
+                    border: Border.all(color: palette.border.withValues(alpha: 0.6)),
                   ),
-                  child: Center(
-                    child: Text(
-                      userInitial,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: palette.onPrimary,
-                      ),
-                    ),
+                  child: ClipOval(
+                    child: (photoUrl != null && photoUrl.isNotEmpty)
+                        ? Image.network(
+                            photoUrl,
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Text(
+                                userInitial,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: palette.primary,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              userInitial,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: palette.primary,
+                              ),
+                            ),
+                          ),
                   ),
                 ),
                 Transform.translate(
@@ -532,6 +606,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       bottom: false,
       child: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: palette.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: palette.border.withValues(alpha: 0.6)),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.menu_rounded, color: palette.textPrimary, size: 22),
+                    padding: EdgeInsets.zero,
+                    tooltip: 'Menu',
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Rotinas & Alarmes',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: palette.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const LiveClockWidget(),
 
           SingleChildScrollView(
@@ -598,6 +704,275 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       ),
     );
   }
+
+// ==========================================
+  // MENU HAMBÚRGUER (DRAWER LATERAL AMOLED)
+  // ==========================================
+
+  Widget _buildAppDrawer({
+    required AppPaletteData palette,
+    required String userName,
+    required String? photoUrl,
+    required String userInitial,
+    required String? userEmail,
+  }) {
+    return Drawer(
+      backgroundColor: palette.surface,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header do Drawer com Foto real e dados do usuário
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: palette.border)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: palette.surfaceVariant,
+                    backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                        ? NetworkImage(photoUrl)
+                        : null,
+                    child: (photoUrl == null || photoUrl.isEmpty)
+                        ? Text(
+                            userInitial,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: palette.primary,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          userName,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: palette.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          userEmail ?? 'Modo Local Offline',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: palette.textMuted,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Itens de Menu
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                children: [
+                  // Seção: Ferramentas (movidas do menu inferior)
+                  _buildDrawerSectionTitle(palette, 'FERRAMENTAS'),
+                  _buildDrawerItem(
+                    palette: palette,
+                    icon: Icons.timer_rounded,
+                    iconColor: palette.primary,
+                    title: 'Timer & Cronômetro',
+                    subtitle: 'Foco Pomodoro e voltas',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TimerStopwatchScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    palette: palette,
+                    icon: Icons.nightlight_round,
+                    iconColor: const Color(0xFF818CF8),
+                    title: 'Calculadora de Sono',
+                    subtitle: 'Ciclos REM de 90 min',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SleepCalculatorScreen()),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Seção: Navegação Principal
+                  _buildDrawerSectionTitle(palette, 'NAVEGAÇÃO'),
+                  _buildDrawerItem(
+                    palette: palette,
+                    icon: Icons.home_rounded,
+                    title: 'Início',
+                    isSelected: _currentNavIndex == 0,
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _currentNavIndex = 0);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    palette: palette,
+                    icon: Icons.alarm_rounded,
+                    title: 'Rotinas & Alarmes',
+                    isSelected: _currentNavIndex == 1,
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _currentNavIndex = 1);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    palette: palette,
+                    icon: Icons.calendar_month_rounded,
+                    title: 'Calendário (Roadmap)',
+                    isSelected: _currentNavIndex == 2,
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _currentNavIndex = 2);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    palette: palette,
+                    icon: Icons.settings_rounded,
+                    title: 'Configurações & Diagnóstico',
+                    isSelected: _currentNavIndex == 3,
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _currentNavIndex = 3);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Seção: Preferências
+                  _buildDrawerSectionTitle(palette, 'PREFERÊNCIAS'),
+                  _buildDrawerItem(
+                    palette: palette,
+                    icon: Icons.palette_outlined,
+                    title: 'Aparência & Temas',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ThemeSelectorScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    palette: palette,
+                    icon: Icons.cloud_outlined,
+                    title: 'Backup & Conta Nuvem',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AuthScreen()),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            // Rodapé do Drawer
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.bolt_rounded, size: 14, color: palette.textMuted),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'appRoutine • AMOLED Edition',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: palette.textMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerSectionTitle(AppPaletteData palette, String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: palette.textMuted,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required AppPaletteData palette,
+    required IconData icon,
+    Color? iconColor,
+    required String title,
+    String? subtitle,
+    bool isSelected = false,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      decoration: BoxDecoration(
+        color: isSelected ? palette.primary.withValues(alpha: 0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        dense: true,
+        leading: Icon(
+          icon,
+          color: isSelected ? palette.primary : (iconColor ?? palette.textPrimary),
+          size: 20,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? palette.primary : palette.textPrimary,
+          ),
+        ),
+        subtitle: subtitle != null
+            ? Text(
+                subtitle,
+                style: TextStyle(fontSize: 10.5, color: palette.textMuted),
+              )
+            : null,
+        onTap: onTap,
+      ),
+    );
+  }
 }
 
 class GestureKey extends StatelessWidget {
@@ -617,6 +992,8 @@ class GestureKey extends StatelessWidget {
 }
 
 /// Pilha Indexada com Transição Animada Fluida (Fade + Slide Suave)
+
+
 class FadeIndexedStack extends StatefulWidget {
   final int index;
   final List<Widget> children;

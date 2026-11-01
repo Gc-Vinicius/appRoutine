@@ -115,7 +115,7 @@ void main() {
       expect(find.text('A Seguir'), findsOneWidget);
     });
 
-    testWidgets('FloatingNavDock handles tab selection and FAB trigger across 6 sections', (tester) async {
+    testWidgets('FloatingNavDock handles 4 uncrowded tabs and FAB trigger', (tester) async {
       int selectedIndex = 0;
       bool fabClicked = false;
 
@@ -135,17 +135,15 @@ void main() {
       expect(find.text('Home'), findsOneWidget);
       expect(find.text('Rotinas'), findsOneWidget);
       expect(find.text('Calendário'), findsOneWidget);
-      expect(find.text('Timer'), findsOneWidget);
-      expect(find.text('Sono'), findsOneWidget);
       expect(find.text('Ajustes'), findsOneWidget);
 
       // Tap on Calendário (Aba 2)
       await tester.tap(find.text('Calendário'));
       expect(selectedIndex, 2);
 
-      // Tap on Ajustes (Aba 5)
+      // Tap on Ajustes (Aba 3)
       await tester.tap(find.text('Ajustes'));
-      expect(selectedIndex, 5);
+      expect(selectedIndex, 3);
 
       // Tap on FAB (+)
       await tester.tap(find.byIcon(Icons.add_rounded));
@@ -154,12 +152,14 @@ void main() {
 
     testWidgets('CalendarScreen renders roadmap preview and back navigation', (tester) async {
       bool backNavigated = false;
+      bool menuPressed = false;
 
       await tester.pumpWidget(
         ProviderScope(
           child: MaterialApp(
             home: CalendarScreen(
               onNavigateToHome: () => backNavigated = true,
+              onMenuPressed: () => menuPressed = true,
             ),
           ),
         ),
@@ -171,6 +171,9 @@ void main() {
 
       await tester.tap(find.text('Voltar para o Início'));
       expect(backNavigated, true);
+
+      await tester.tap(find.byIcon(Icons.menu_rounded));
+      expect(menuPressed, true);
     });
 
     testWidgets('FadeIndexedStack renders children and animates smoothly', (tester) async {
@@ -204,6 +207,30 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300)); // Finishes animation
 
       expect(find.text('Tab 1 Content'), findsOneWidget);
+    });
+
+    testWidgets('HomeScreen opens drawer when hamburger menu is tapped', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      // Encontra o botão de menu hambúrguer na Home
+      final menuBtn = find.byTooltip('Menu');
+      expect(menuBtn, findsOneWidget);
+
+      await tester.tap(menuBtn);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300)); // Animação do drawer
+
+      // Verifica itens do menu hambúrguer
+      expect(find.text('FERRAMENTAS'), findsOneWidget);
+      expect(find.text('Timer & Cronômetro'), findsOneWidget);
+      expect(find.text('Calculadora de Sono'), findsOneWidget);
+      expect(find.text('Rotinas & Alarmes'), findsOneWidget);
     });
   });
 }

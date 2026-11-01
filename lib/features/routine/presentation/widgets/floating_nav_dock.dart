@@ -18,7 +18,7 @@ class FloatingNavDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
       height: 64,
       decoration: BoxDecoration(
         color: palette.surface,
@@ -38,7 +38,7 @@ class FloatingNavDock extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Lado Esquerdo (3 itens)
+              // Lado Esquerdo (2 itens)
               // Tab 0: Home
               Expanded(
                 child: _buildNavItem(
@@ -55,6 +55,11 @@ class FloatingNavDock extends StatelessWidget {
                   icon: Icons.alarm_rounded,
                 ),
               ),
+
+              // Espaço central reservado para o FAB elevado
+              const SizedBox(width: 56),
+
+              // Lado Direito (2 itens)
               // Tab 2: Calendário
               Expanded(
                 child: _buildNavItem(
@@ -63,31 +68,10 @@ class FloatingNavDock extends StatelessWidget {
                   icon: Icons.calendar_month_rounded,
                 ),
               ),
-
-              // Espaço central reservado para o FAB elevado
-              const SizedBox(width: 48),
-
-              // Lado Direito (3 itens)
-              // Tab 3: Timer
+              // Tab 3: Ajustes / Configurações
               Expanded(
                 child: _buildNavItem(
                   index: 3,
-                  label: 'Timer',
-                  icon: Icons.timer_rounded,
-                ),
-              ),
-              // Tab 4: Sono
-              Expanded(
-                child: _buildNavItem(
-                  index: 4,
-                  label: 'Sono',
-                  icon: Icons.nightlight_round,
-                ),
-              ),
-              // Tab 5: Ajustes / Configurações
-              Expanded(
-                child: _buildNavItem(
-                  index: 5,
                   label: 'Ajustes',
                   icon: Icons.settings_rounded,
                 ),
@@ -102,8 +86,8 @@ class FloatingNavDock extends StatelessWidget {
               onTap: onAddPressed,
               behavior: HitTestBehavior.opaque,
               child: Container(
-                width: 50,
-                height: 50,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   color: palette.primary,
                   shape: BoxShape.circle,
@@ -119,7 +103,7 @@ class FloatingNavDock extends StatelessWidget {
                 child: Icon(
                   Icons.add_rounded,
                   color: palette.onPrimary,
-                  size: 26,
+                  size: 28,
                 ),
               ),
             ),
@@ -143,14 +127,14 @@ class FloatingNavDock extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 19, color: color),
-          const SizedBox(height: 2),
+          Icon(icon, size: 21, color: color),
+          const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 9.5,
+                fontSize: 10,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 color: color,
               ),
