@@ -17,6 +17,7 @@ class LocalStorageService {
   static const String _timerPresetsFileName = 'timer_presets.json';
   static const String _alarmSettingsFileName = 'alarm_settings.json';
   static const String _habitCheckinsFileName = 'habit_checkins.json';
+  static const String _focusTimeFileName = 'daily_focus_time.json';
 
   static Future<File> _getFile(String fileName) async {
     final dir = await getApplicationDocumentsDirectory();
@@ -304,5 +305,56 @@ class LocalStorageService {
       routineId: routineId,
       checkins: checkins,
     );
+  }
+
+  // ==========================================
+  // TEMPO DE FOCO DIÁRIO (OFFLINE)
+  // ==========================================
+
+  /// Carrega os segundos de foco acumulados na data de hoje
+  static Future<int> loadTodayFocusSeconds() async {
+    try {
+      final file = await _getFile(_focusTimeFileName);
+      if (!await file.exists()) {
+        return 0;
+      }
+      final jsonString = await file.readAsString();
+      if (jsonString.trim().isEmpty) {
+        return 0;
+      }
+      final Map<String, dynamic> data = jsonDecode(jsonString);
+      final now = DateTime.now();
+      final todayKey =
+          '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      return (data[todayKey] as num?)?.toInt() ?? 0;
+    } catch (e) {
+      debugPrint('[LocalStorageService] Erro ao ler tempo de foco: $e');
+      return 0;
+    }
+  }
+
+  /// Adiciona segundos de foco realizados hoje
+  static Future<int> addFocusSecondsToday(int seconds) async {
+    try {
+      final file = await _getFile(_focusTimeFileName);
+      Map<String, dynamic> data = {};
+      if (await file.exists()) {
+        final jsonString = await file.readAsString();
+        if (jsonString.trim().isNotEmpty) {
+          data = jsonDecode(jsonString) as Map<String, dynamic>;
+        }
+      }
+      final now = DateTime.now();
+      final todayKey =
+          '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final current = (data[todayKey] as num?)?.toInt() ?? 0;
+      final updated = current + seconds;
+      data[todayKey] = updated;
+      await file.writeAsString(jsonEncode(data), flush: true);
+      return updated;
+    } catch (e) {
+      debugPrint('[LocalStorageService] Erro ao salvar tempo de foco: $e');
+      return 0;
+    }
   }
 }

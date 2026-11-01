@@ -91,10 +91,101 @@ class HabitCheckinNotifier extends StateNotifier<List<HabitCheckinModel>> {
       checkins: state,
     );
   }
+
+  /// Retorna a sequência (streak) atual de dias consecutivos com hábitos concluídos
+  int getOverallCurrentStreak() {
+    if (state.isEmpty) return 0;
+
+    final completedDates = state
+        .where((c) => c.isCompleted)
+        .map((c) => DateTime(c.date.year, c.date.month, c.date.day))
+        .toSet()
+        .toList();
+
+    if (completedDates.isEmpty) return 0;
+    completedDates.sort();
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final dateSet = completedDates.toSet();
+
+    DateTime checkDate;
+    if (dateSet.contains(today)) {
+      checkDate = today;
+    } else if (dateSet.contains(yesterday)) {
+      checkDate = yesterday;
+    } else {
+      return 0;
+    }
+
+    int streak = 0;
+    while (dateSet.contains(checkDate)) {
+      streak++;
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+
+    return streak;
+  }
+
+  /// Retorna o maior recorde histórico de dias consecutivos com hábitos concluídos
+  int getOverallRecordStreak() {
+    if (state.isEmpty) return 0;
+
+    final completedDates = state
+        .where((c) => c.isCompleted)
+        .map((c) => DateTime(c.date.year, c.date.month, c.date.day))
+        .toSet()
+        .toList();
+
+    if (completedDates.isEmpty) return 0;
+    completedDates.sort();
+
+    int maxStreak = 1;
+    int currentStreak = 1;
+
+    for (int i = 1; i < completedDates.length; i++) {
+      final prev = completedDates[i - 1];
+      final curr = completedDates[i];
+      if (curr.difference(prev).inDays == 1) {
+        currentStreak++;
+        if (currentStreak > maxStreak) {
+          maxStreak = currentStreak;
+        }
+      } else if (curr.difference(prev).inDays > 1) {
+        currentStreak = 1;
+      }
+    }
+
+    final current = getOverallCurrentStreak();
+    return maxStreak > current ? maxStreak : current;
+  }
 }
 
 final habitCheckinProvider = StateNotifierProvider<HabitCheckinNotifier, List<HabitCheckinModel>>((ref) {
   return HabitCheckinNotifier();
+});
+
+// Provedor de Tempo Foco Diário
+class FocusTimeNotifier extends StateNotifier<int> {
+  FocusTimeNotifier() : super(0) {
+    loadTodayFocus();
+  }
+
+  Future<void> loadTodayFocus() async {
+    final seconds = await LocalStorageService.loadTodayFocusSeconds();
+    state = seconds;
+  }
+
+  Future<void> addSeconds(int seconds) async {
+    final updated = await LocalStorageService.addFocusSecondsToday(seconds);
+    state = updated;
+  }
+}
+
+final focusTimeTodayProvider = StateNotifierProvider<FocusTimeNotifier, int>((ref) {
+  return FocusTimeNotifier();
 });
 
 // Provedor de Categorias Customizadas com Emojis

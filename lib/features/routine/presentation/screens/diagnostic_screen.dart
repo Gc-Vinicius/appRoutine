@@ -11,8 +11,13 @@ import '../../../../core/theme/theme_provider.dart';
 
 class DiagnosticScreen extends ConsumerWidget {
   final bool isEmbedded;
+  final VoidCallback? onMenuPressed;
 
-  const DiagnosticScreen({super.key, this.isEmbedded = false});
+  const DiagnosticScreen({
+    super.key,
+    this.isEmbedded = false,
+    this.onMenuPressed,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -24,6 +29,13 @@ class DiagnosticScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Configurações'),
         automaticallyImplyLeading: !isEmbedded,
+        leading: isEmbedded
+            ? IconButton(
+                icon: const Icon(Icons.menu_rounded),
+                tooltip: 'Menu',
+                onPressed: onMenuPressed,
+              )
+            : null,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
